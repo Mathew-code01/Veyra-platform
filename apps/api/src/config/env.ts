@@ -17,10 +17,20 @@ export const EnvSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
   DATABASE_URL: z.string().optional(),
 
-  // Payments (mock until provider selected)
-  PAYMENT_PROVIDER: z.enum(['mock', 'stripe']).default('mock'),
-  STRIPE_SECRET_KEY: z.string().optional(),
-  STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  // Payments (Paystack)
+  PAYMENT_PROVIDER: z.enum(['mock', 'paystack']).default('mock'),
+  PAYSTACK_SECRET_KEY: z.string().optional(),
+  PAYSTACK_PUBLIC_KEY: z.string().optional(),
+  PAYSTACK_WEBHOOK_SECRET: z.string().optional(),
+  PAYMENTS_MODE: z.enum(['test', 'live']).default('test'),
+  PAYMENTS_LIVE_ENABLED: z.enum(['true', 'false']).default('false'),
+
+  // OAuth (Google / GitHub)
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
+  GITHUB_CLIENT_ID: z.string().optional(),
+  GITHUB_CLIENT_SECRET: z.string().optional(),
+  OAUTH_REDIRECT_BASE_URL: z.string().url().optional(),
 
   // Email (mock until provider configured)
   EMAIL_PROVIDER: z.enum(['mock', 'smtp']).default('mock'),

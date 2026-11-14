@@ -5,9 +5,19 @@ import {
   LoginRequestSchema,
   PasswordRecoveryRequestSchema,
   UpdateProfileRequestSchema,
+  OAuthInitiateRequestSchema,
+  OAuthCallbackRequestSchema,
+  AccountLinkRequestSchema,
 } from '../../../../../packages/contracts/src/index.ts';
 import { getSupabaseAdmin, getSupabaseUser } from '../../integrations/supabase/client.js';
 import { authenticateUser } from './auth.service.js';
+import {
+  generateOAuthAuthorizationUrl,
+  exchangeOAuthCode,
+  ensureProfileForOAuthUser,
+  isOAuthProviderConfigured,
+  getConfiguredOAuthProviders,
+} from './oauth.service.js';
 
 // Local validation helper using Zod
 function validate<T>(schema: z.ZodType<T>, body: unknown): T {
@@ -510,6 +520,253 @@ const authPlugin: FastifyPluginAsync = async (fastify) => {
             code: 'PROFILE_UPDATE_ERROR',
             message: 'An unexpected error occurred while updating profile.',
             status: 500,
+          },
+        });
+      }
+    }
+  );
+
+  // --- OAuth: Get configured providers ---
+  fastify.get(
+    '/oauth/providers',
+    async (_request, reply) => {
+      const requestId = _request.id ?? 'unknown';
+      const providers = getConfiguredOAuthProviders().map((p) => ({
+        provider: p,
+        configured: true,
+      }));
+
+      return reply.send({
+        ok: true,
+        requestId,
+        providers,
+      });
+    }
+  );
+
+  // --- OAuth: Initiate authorization ---
+  fastify.post(
+    '/oauth/authorize',
+    async (request, reply) => {
+      const requestId = request.id ?? 'unknown';
+
+      let body: z.infer<typeof OAuthInitiateRequestSchema>;
+      try {
+        body = OAuthInitiateRequestSchema.parse(request.body);
+      } catch {
+        return reply.status(400).send({
+          ok: false,
+          requestId,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Request validation failed.',
+            status: 400,
+          },
+        });
+      }
+
+      const { provider } = body;
+
+      if (!isOAuthProviderConfigured(provider)) {
+        return reply.status(400).send({
+          ok: false,
+          requestId,
+          error: {
+            code: 'PROVIDER_NOT_CONFIGURED',
+            message: `OAuth provider not configured: ${provider}`,
+            status: 400,
+          },
+        });
+      }
+
+      try {
+        const { authorizationUrl, state } = generateOAuthAuthorizationUrl(
+          provider,
+        );
+
+        return reply.send({
+          ok: true,
+          requestId,
+          provider,
+          authorizationUrl,
+          state,
+        });
+      } catch (err) {
+        request.log.error({ requestId, err }, 'oauth authorize error');
+        return reply.status(500).send({
+          ok: false,
+          requestId,
+          error: {
+            code: 'OAUTH_AUTHORIZE_ERROR',
+            message: 'An unexpected error occurred while initiating OAuth.',
+            status: 500,
+          },
+        });
+      }
+    }
+  );
+
+  // --- OAuth: Callback (exchange code for session) ---
+  fastify.post(
+    '/oauth/callback',
+    async (request, reply) => {
+      const requestId = request.id ?? 'unknown';
+
+      let body: z.infer<typeof OAuthCallbackRequestSchema>;
+      try {
+        body = OAuthCallbackRequestSchema.parse(request.body);
+      } catch {
+        return reply.status(400).send({
+          ok: false,
+          requestId,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Request validation failed.',
+            status: 400,
+          },
+        });
+      }
+
+      const { provider, code } = body;
+
+      if (!isOAuthProviderConfigured(provider)) {
+        return reply.status(400).send({
+          ok: false,
+          requestId,
+          error: {
+            code: 'PROVIDER_NOT_CONFIGURED',
+            message: `OAuth provider not configured: ${provider}`,
+            status: 400,
+          },
+        });
+      }
+
+      try {
+        const adminClient = getSupabaseAdmin();
+        const result = await exchangeOAuthCode(
+          adminClient,
+          provider,
+          code,
+        );
+
+        // Ensure profile exists for the OAuth user
+        await ensureProfileForOAuthUser(adminClient, result.user.id, result.user.email);
+
+        return reply.send({
+          ok: true,
+          requestId,
+          accessToken: result.accessToken,
+          refreshToken: result.refreshToken,
+          expiresIn: result.expiresIn,
+          user: {
+            id: result.user.id,
+            email: result.user.email,
+            emailConfirmed: result.user.emailConfirmed,
+            provider: result.user.provider,
+            isNewUser: result.user.isNewUser,
+          },
+        });
+      } catch (err) {
+        request.log.error({ requestId, err }, 'oauth callback error');
+        return reply.status(400).send({
+          ok: false,
+          requestId,
+          error: {
+            code: 'OAUTH_CALLBACK_ERROR',
+            message: err instanceof Error ? err.message : 'OAuth callback failed.',
+            status: 400,
+          },
+        });
+      }
+    }
+  );
+
+  // --- OAuth: Account linking ---
+  fastify.post(
+    '/oauth/link',
+    async (request, reply) => {
+      const requestId = request.id ?? 'unknown';
+
+      let body: z.infer<typeof AccountLinkRequestSchema>;
+      try {
+        body = AccountLinkRequestSchema.parse(request.body);
+      } catch {
+        return reply.status(400).send({
+          ok: false,
+          requestId,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Request validation failed.',
+            status: 400,
+          },
+        });
+      }
+
+      const { provider, code } = body;
+
+      const authHeader = request.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return reply.status(401).send({
+          ok: false,
+          requestId,
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Missing or invalid authorization header.',
+            status: 401,
+          },
+        });
+      }
+
+      const accessToken = authHeader.substring(7);
+      const user = await authenticateUser(accessToken);
+      if (!user) {
+        return reply.status(401).send({
+          ok: false,
+          requestId,
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Invalid or expired session.',
+            status: 401,
+          },
+        });
+      }
+
+      try {
+        const adminClient = getSupabaseAdmin();
+        const result = await exchangeOAuthCode(
+          adminClient,
+          provider,
+          code,
+        );
+
+        // Verify the linked account matches the current user
+        if (result.user.id !== user.id) {
+          return reply.status(403).send({
+            ok: false,
+            requestId,
+            error: {
+              code: 'ACCOUNT_MISMATCH',
+              message: 'OAuth account does not match current user.',
+              status: 403,
+            },
+          });
+        }
+
+        return reply.send({
+          ok: true,
+          requestId,
+          provider,
+          linked: true,
+        });
+      } catch (err) {
+        request.log.error({ requestId, err }, 'oauth account link error');
+        return reply.status(400).send({
+          ok: false,
+          requestId,
+          error: {
+            code: 'ACCOUNT_LINK_ERROR',
+            message: err instanceof Error ? err.message : 'Account linking failed.',
+            status: 400,
           },
         });
       }

@@ -138,6 +138,87 @@ export const AuthenticatedUserSchema = z.object({
 
 export type AuthenticatedUser = z.infer<typeof AuthenticatedUserSchema>;
 
+// --- OAuth (Google / GitHub) ---
+
+export const OAuthProviderSchema = z.enum(['google', 'github']);
+
+export type OAuthProvider = z.infer<typeof OAuthProviderSchema>;
+
+export const OAuthInitiateRequestSchema = z.object({
+  provider: OAuthProviderSchema,
+  redirectTo: z.string().url().optional(),
+});
+
+export type OAuthInitiateRequest = z.infer<typeof OAuthInitiateRequestSchema>;
+
+export const OAuthInitiateResponseSchema = z.object({
+  ok: z.literal(true),
+  requestId: z.string(),
+  provider: OAuthProviderSchema,
+  authorizationUrl: z.string().url(),
+  state: z.string(),
+});
+
+export type OAuthInitiateResponse = z.infer<typeof OAuthInitiateResponseSchema>;
+
+export const OAuthCallbackRequestSchema = z.object({
+  provider: OAuthProviderSchema,
+  code: z.string().min(1),
+  state: z.string().min(1),
+  redirectTo: z.string().url().optional(),
+});
+
+export type OAuthCallbackRequest = z.infer<typeof OAuthCallbackRequestSchema>;
+
+export const OAuthCallbackResponseSchema = z.object({
+  ok: z.literal(true),
+  requestId: z.string(),
+  accessToken: z.string(),
+  refreshToken: z.string(),
+  expiresIn: z.number(),
+  user: z.object({
+    id: z.string(),
+    email: z.string(),
+    emailConfirmed: z.boolean(),
+    provider: OAuthProviderSchema,
+    isNewUser: z.boolean(),
+  }),
+});
+
+export type OAuthCallbackResponse = z.infer<typeof OAuthCallbackResponseSchema>;
+
+export const OAuthProviderStatusSchema = z.object({
+  ok: z.literal(true),
+  requestId: z.string(),
+  providers: z.array(
+    z.object({
+      provider: OAuthProviderSchema,
+      configured: z.boolean(),
+    }),
+  ),
+});
+
+export type OAuthProviderStatus = z.infer<typeof OAuthProviderStatusSchema>;
+
+// --- Account Linking ---
+
+export const AccountLinkRequestSchema = z.object({
+  provider: OAuthProviderSchema,
+  code: z.string().min(1),
+  state: z.string().min(1),
+});
+
+export type AccountLinkRequest = z.infer<typeof AccountLinkRequestSchema>;
+
+export const AccountLinkResponseSchema = z.object({
+  ok: z.literal(true),
+  requestId: z.string(),
+  provider: OAuthProviderSchema,
+  linked: z.boolean(),
+});
+
+export type AccountLinkResponse = z.infer<typeof AccountLinkResponseSchema>;
+
 // --- Devices ---
 
 export const DeviceRegisterRequestSchema = z.object({
