@@ -757,3 +757,86 @@ export const AdminAuditListResponseSchema = z.object({
 
 export type AdminAuditListResponse = z.infer<typeof AdminAuditListResponseSchema>;
 
+// --- Account Deletion ---
+
+export const AccountDeletionRequestSchema = z.object({
+  reason: z.string().min(1).max(500).optional(),
+  confirmPassword: z.string().min(1),
+});
+
+export type AccountDeletionRequest = z.infer<typeof AccountDeletionRequestSchema>;
+
+export const AccountDeletionResponseSchema = z.object({
+  ok: z.literal(true),
+  requestId: z.string(),
+  accountId: z.string(),
+  status: z.string(),
+  deletionScheduledAt: z.string(),
+  dataRetentionDays: z.number().int(),
+});
+
+export type AccountDeletionResponse = z.infer<typeof AccountDeletionResponseSchema>;
+
+export const AccountStatusResponseSchema = z.object({
+  ok: z.literal(true),
+  requestId: z.string(),
+  account: z.object({
+    id: z.string(),
+    email: z.string(),
+    status: z.string(),
+    locale: z.string(),
+    createdAt: z.string(),
+    updatedAt: z.string(),
+    deletedAt: z.string().optional(),
+  }),
+});
+
+export type AccountStatusResponse = z.infer<typeof AccountStatusResponseSchema>;
+
+// --- Role Management ---
+
+export const RoleAssignmentRequestSchema = z.object({
+  userId: z.string().uuid(),
+  role: z.enum(['admin', 'support', 'auditor', 'billing']),
+});
+
+export type RoleAssignmentRequest = z.infer<typeof RoleAssignmentRequestSchema>;
+
+export const RoleAssignmentResponseSchema = z.object({
+  ok: z.literal(true),
+  requestId: z.string(),
+  userId: z.string(),
+  role: z.string(),
+  granted: z.boolean(),
+});
+
+export type RoleAssignmentResponse = z.infer<typeof RoleAssignmentResponseSchema>;
+
+export const RoleListResponseSchema = z.object({
+  ok: z.literal(true),
+  requestId: z.string(),
+  roles: z.array(AdminRoleSchema),
+});
+
+export type RoleListResponse = z.infer<typeof RoleListResponseSchema>;
+
+// --- Account Data Export ---
+
+export const AccountExportRequestSchema = z.object({
+  includeAuditEvents: z.boolean().default(false),
+  includeUsageRecords: z.boolean().default(false),
+});
+
+export type AccountExportRequest = z.infer<typeof AccountExportRequestSchema>;
+
+export const AccountExportResponseSchema = z.object({
+  ok: z.literal(true),
+  requestId: z.string(),
+  exportId: z.string(),
+  status: z.string(),
+  downloadUrl: z.string().url().optional(),
+  expiresAt: z.string().optional(),
+});
+
+export type AccountExportResponse = z.infer<typeof AccountExportResponseSchema>;
+

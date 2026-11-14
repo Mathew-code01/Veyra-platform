@@ -18,6 +18,7 @@ import releasesPlugin from './modules/releases/releases.routes.ts';
 import backupsPlugin from './modules/backups/backup.routes.ts';
 import notificationsPlugin from './modules/notifications/notification.routes.ts';
 import adminPlugin from './modules/admin/admin.routes.ts';
+import accountPlugin from './modules/account/account.routes.ts';
 import healthPlugin from './routes/health.ts';
 import { getLogger } from './lib/logger.ts';
 import { buildServerConfig } from './config/server.ts';
@@ -101,6 +102,9 @@ export async function buildApp(): Promise<ReturnType<typeof fastify>> {
 
   // Admin routes (user lookup, credit adjustment, device revoke, audit)
   await app.register(adminPlugin, { prefix: '/api/v1/admin' });
+
+  // Account routes (status, deletion, export, role management)
+  await app.register(accountPlugin, { prefix: '/api/v1/account' });
 
   // 404 handler (setNotFoundHandler avoids method conflicts with CORS)
   app.setNotFoundHandler((request, reply) => {
