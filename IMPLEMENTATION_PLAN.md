@@ -9,7 +9,7 @@ Phase 0 complete. This plan reflects the intended incremental implementation. It
 | Phase | Focus | Acceptance | Status |
 |---|---|---|---|
 | 0 | Discovery and architecture docs | Documents written, project inspected, tool versions checked | Complete |
-| 1 | Backend foundation: TS project, Fastify, config validation, health, logging, errors, tests | Server starts locally; health works; invalid config fails clearly; tests run; no paid service | In progress |
+| 1 | Backend foundation: TS project, Fastify, config validation, health, logging, errors, tests | Server starts locally; health works; invalid config fails clearly; tests run; no paid service | Complete |
 | 2 | Supabase foundation: config, migration strategy, initial schema, RLS, local/mock testing | Migrations valid; DB access scoped; no service secret exposed; setup docs complete | Pending |
 | 3 | Identity and accounts: Supabase Auth, account APIs, verification/recovery | Test-mode flows work; protected endpoints reject unauthenticated; ownership tested | Pending |
 | 4 | Devices and entitlements: device registration/revocation, session validation, offline snapshots | Unauthorized devices rejected; revoked devices lose access; snapshots signed + expiring | Pending |

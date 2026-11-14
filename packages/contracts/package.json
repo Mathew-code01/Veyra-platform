@@ -1,0 +1,27 @@
+{
+  "name": "@veyra/contracts",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Shared versioned TypeScript API contracts (Zod schemas)",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src test"
+  },
+  "dependencies": {
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.8.0",
+    "vitest": "^3.0.0",
+    "eslint": "^9.20.0",
+    "prettier": "^3.5.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

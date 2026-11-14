@@ -1,0 +1,27 @@
+{
+  "name": "veyra-platform",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Veyra Platform backend - central service for Veyra Desktop and Veyra Website",
+  "scripts": {
+    "dev": "npm --workspace apps/api run dev",
+    "build": "npm --workspace apps/api run build && npm --workspace packages/contracts run build && npm --workspace packages/sdk run build",
+    "start": "npm --workspace apps/api run start",
+    "test": "npm --workspace apps/api run test && npm --workspace packages/contracts run test && npm --workspace packages/sdk run test",
+    "typecheck": "npm --workspace apps/api run typecheck && npm --workspace packages/contracts run typecheck && npm --workspace packages/sdk run typecheck",
+    "lint": "npm --workspace apps/api run lint"
+  },
+  "workspaces": [
+    "apps/api",
+    "packages/contracts",
+    "packages/sdk"
+  ],
+  "devDependencies": {
+    "typescript": "^5.8.0",
+    "prettier": "^3.5.0",
+    "eslint": "^9.20.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

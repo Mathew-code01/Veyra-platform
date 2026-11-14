@@ -1,0 +1,40 @@
+{
+  "name": "@veyra/api",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Veyra Platform API (Fastify)",
+  "main": "dist/main.js",
+  "types": "dist/main.d.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "build": "tsc",
+    "start": "node dist/main.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src test"
+  },
+  "dependencies": {
+    "fastify": "^4.28.0",
+    "@fastify/cors": "^9.0.0",
+    "@fastify/helmet": "^11.0.0",
+    "@fastify/rate-limit": "^9.0.0",
+    "pino": "^9.5.0",
+    "pino-pretty": "^11.0.0",
+    "zod": "^3.23.0",
+    "dotenv": "^16.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.8.0",
+    "tsx": "^4.19.0",
+    "vitest": "^3.0.0",
+    "@vitest/coverage-v8": "^3.0.0",
+    "eslint": "^9.20.0",
+    "prettier": "^3.5.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
