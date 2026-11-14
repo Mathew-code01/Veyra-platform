@@ -840,3 +840,66 @@ export const AccountExportResponseSchema = z.object({
 
 export type AccountExportResponse = z.infer<typeof AccountExportResponseSchema>;
 
+// --- Country-aware Pricing ---
+
+export const CountryCurrencySchema = z.object({
+  country: z.string().length(2), // ISO 3166-1 alpha-2
+  countryName: z.string(),
+  currency: z.string().length(3), // ISO 4217
+  currencySymbol: z.string(),
+  currencyExponent: z.number().int().min(0).max(3).default(2),
+  isSupported: z.boolean().default(true),
+});
+
+export type CountryCurrency = z.infer<typeof CountryCurrencySchema>;
+
+export const CountryCurrencyListResponseSchema = z.object({
+  ok: z.literal(true),
+  requestId: z.string(),
+  countries: z.array(CountryCurrencySchema),
+});
+
+export type CountryCurrencyListResponse = z.infer<typeof CountryCurrencyListResponseSchema>;
+
+export const PlanPriceByCountrySchema = z.object({
+  planId: z.string(),
+  planName: z.string(),
+  planFamily: z.string(),
+  country: z.string().length(2),
+  currency: z.string().length(3),
+  amountCents: z.number().int().nonnegative(),
+  billingInterval: z.enum(['monthly', 'yearly']),
+  isAvailable: z.boolean(),
+});
+
+export type PlanPriceByCountry = z.infer<typeof PlanPriceByCountrySchema>;
+
+export const PlanPricingResponseSchema = z.object({
+  ok: z.literal(true),
+  requestId: z.string(),
+  country: z.string().length(2),
+  currency: z.string().length(3),
+  currencySymbol: z.string(),
+  currencyExponent: z.number().int(),
+  plans: z.array(PlanPriceByCountrySchema),
+});
+
+export type PlanPricingResponse = z.infer<typeof PlanPricingResponseSchema>;
+
+export const UserCountryPreferenceSchema = z.object({
+  country: z.string().length(2).optional(),
+});
+
+export type UserCountryPreference = z.infer<typeof UserCountryPreferenceSchema>;
+
+export const UserCountryResponseSchema = z.object({
+  ok: z.literal(true),
+  requestId: z.string(),
+  country: z.string().length(2),
+  currency: z.string().length(3),
+  currencySymbol: z.string(),
+  detectedBy: z.enum(['user_preference', 'geolocation', 'default']),
+});
+
+export type UserCountryResponse = z.infer<typeof UserCountryResponseSchema>;
+

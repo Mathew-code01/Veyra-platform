@@ -15,6 +15,7 @@ import aiGatewayPlugin from './modules/ai-gateway/ai-gateway.routes.ts';
 import modulesPlugin from './modules/modules/module-catalogue.routes.ts';
 import downloadsPlugin from './modules/downloads/download-authorization.routes.ts';
 import releasesPlugin from './modules/releases/releases.routes.ts';
+import pricingPlugin from './modules/pricing/pricing.routes.ts';
 import backupsPlugin from './modules/backups/backup.routes.ts';
 import notificationsPlugin from './modules/notifications/notification.routes.ts';
 import adminPlugin from './modules/admin/admin.routes.ts';
@@ -90,6 +91,9 @@ export async function buildApp(): Promise<ReturnType<typeof fastify>> {
 
   // Desktop release routes (check, channels, list)
   await app.register(releasesPlugin, { prefix: '/api/v1/releases' });
+
+  // Pricing routes (country-aware pricing)
+  await app.register(pricingPlugin, { prefix: '/api/v1/pricing' });
 
   // Cloud AI gateway routes (invoke, models)
   await app.register(aiGatewayPlugin, { prefix: '/api/v1/ai' });
