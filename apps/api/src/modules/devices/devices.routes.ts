@@ -9,6 +9,8 @@ import {
   listDevices,
   authorizeDevice,
   revokeDevice,
+  replaceDevice,
+  revokeDeviceSessions,
   updateDeviceLastSeen,
 } from './devices.service.js';
 import { authenticateUser } from '../auth/auth.service.js';
@@ -68,6 +70,22 @@ const devicesPlugin: FastifyPluginAsync = async (fastify) => {
 
       try {
         const adminClient = getSupabaseAdmin();
+        const { data: subscription } = await adminClient
+          .from('subscriptions')
+          .select('plan_id')
+          .eq('user_id', user.id)
+          .eq('status', 'active')
+          .single();
+
+        let deviceLimit: number | undefined;
+        if (subscription?.plan_id) {
+          const { data: plan } = await adminClient
+            .from('plans')
+            .select('device_limit')
+            .eq('id', subscription.plan_id)
+            .single();
+          if (plan) deviceLimit = plan.device_limit;
+        }
 
         const result = await registerDevice(
           adminClient,
@@ -75,6 +93,7 @@ const devicesPlugin: FastifyPluginAsync = async (fastify) => {
           body.installationId,
           body.deviceName,
           body.platform,
+          deviceLimit,
         );
 
         // Update last seen
@@ -321,6 +340,186 @@ const devicesPlugin: FastifyPluginAsync = async (fastify) => {
           error: {
             code: 'DEVICE_LAST_SEEN_ERROR',
             message: 'An unexpected error occurred while updating last seen.',
+            status: 500,
+          },
+        });
+      }
+    }
+  );
+
+  // --- Replace device ---
+  fastify.post(
+    '/:deviceId/replace',
+    async (request, reply) => {
+      const requestId = request.id ?? 'unknown';
+      const { deviceId } = request.params as { deviceId: string };
+
+      let body: { installationId: string; deviceName?: string; platform?: string };
+      try {
+        body = z.object({
+          installationId: z.string().min(1),
+          deviceName: z.string().min(1).max(100).optional(),
+          platform: z.enum(['windows', 'macos', 'linux']).optional(),
+        }).parse(request.body);
+      } catch {
+        return reply.status(400).send({
+          ok: false,
+          requestId,
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Request validation failed.',
+            status: 400,
+          },
+        });
+      }
+
+      const authHeader = request.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return reply.status(401).send({
+          ok: false,
+          requestId,
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Missing or invalid authorization header.',
+            status: 401,
+          },
+        });
+      }
+
+      const accessToken = authHeader.substring(7);
+      const user = await authenticateUser(accessToken);
+      if (!user) {
+        return reply.status(401).send({
+          ok: false,
+          requestId,
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Invalid or expired session.',
+            status: 401,
+          },
+        });
+      }
+
+      try {
+        const adminClient = getSupabaseAdmin();
+
+        // Get device limit from subscription
+        const { data: subscription } = await adminClient
+          .from('subscriptions')
+          .select('plan_id')
+          .eq('user_id', user.id)
+          .eq('status', 'active')
+          .single();
+
+        let deviceLimit: number | undefined;
+        if (subscription?.plan_id) {
+          const { data: plan } = await adminClient
+            .from('plans')
+            .select('device_limit')
+            .eq('id', subscription.plan_id)
+            .single();
+          if (plan) deviceLimit = plan.device_limit;
+        }
+
+        const result = await replaceDevice(
+          adminClient,
+          user.id,
+          deviceId,
+          body.installationId,
+          body.deviceName,
+          body.platform,
+          deviceLimit,
+        );
+
+        return reply.send({
+          ok: true,
+          requestId,
+          device: result.device,
+          deviceCredentialHash: result.deviceCredentialHash,
+        });
+      } catch (err) {
+        request.log.error({ requestId, err }, 'device replacement error');
+        return reply.status(500).send({
+          ok: false,
+          requestId,
+          error: {
+            code: 'DEVICE_REPLACEMENT_ERROR',
+            message: err instanceof Error ? err.message : 'Device replacement failed.',
+            status: 500,
+          },
+        });
+      }
+    }
+  );
+
+  // --- Revoke device sessions ---
+  fastify.post(
+    '/:deviceId/sessions/revoke',
+    async (request, reply) => {
+      const requestId = request.id ?? 'unknown';
+      const { deviceId } = request.params as { deviceId: string };
+
+      const authHeader = request.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return reply.status(401).send({
+          ok: false,
+          requestId,
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Missing or invalid authorization header.',
+            status: 401,
+          },
+        });
+      }
+
+      const accessToken = authHeader.substring(7);
+      const user = await authenticateUser(accessToken);
+      if (!user) {
+        return reply.status(401).send({
+          ok: false,
+          requestId,
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Invalid or expired session.',
+            status: 401,
+          },
+        });
+      }
+
+      try {
+        const adminClient = getSupabaseAdmin();
+
+        // Verify device belongs to user
+        const { data: device } = await adminClient
+          .from('devices')
+          .select('id')
+          .eq('id', deviceId)
+          .eq('user_id', user.id)
+          .single();
+
+        if (!device) {
+          return reply.status(404).send({
+            ok: false,
+            requestId,
+            error: {
+              code: 'DEVICE_NOT_FOUND',
+              message: 'Device not found.',
+              status: 404,
+            },
+          });
+        }
+
+        await revokeDeviceSessions(adminClient, deviceId);
+
+        return reply.send({ ok: true, requestId });
+      } catch (err) {
+        request.log.error({ requestId, err }, 'device session revocation error');
+        return reply.status(500).send({
+          ok: false,
+          requestId,
+          error: {
+            code: 'DEVICE_SESSION_REVOCATION_ERROR',
+            message: 'An unexpected error occurred while revoking device sessions.',
             status: 500,
           },
         });

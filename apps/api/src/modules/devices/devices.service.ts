@@ -12,8 +12,27 @@ export function generateDeviceCredentialHash(installationId: string): string {
 }
 
 /**
+ * Count authorized devices for a user.
+ */
+async function countAuthorizedDevices(
+  adminClient: SupabaseClient,
+  userId: string,
+): Promise<number> {
+  const { count, error } = await adminClient
+    .from('devices')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('is_authorized', true)
+    .eq('is_revoked', false);
+
+  if (error) throw error;
+  return count ?? 0;
+}
+
+/**
  * Register a new device. Creates a device record with is_authorized=false.
  * Authorization must be granted server-side (see authorizeDevice).
+ * Enforces device limits from the user's plan.
  * Returns the device credential hash to be stored in OS secure storage.
  */
 export async function registerDevice(
@@ -22,7 +41,16 @@ export async function registerDevice(
   installationId: string,
   deviceName?: string,
   platform?: string,
+  deviceLimit?: number,
 ) {
+  // Enforce device limit if provided
+  if (deviceLimit !== undefined && deviceLimit > 0) {
+    const authorizedCount = await countAuthorizedDevices(adminClient, userId);
+    if (authorizedCount >= deviceLimit) {
+      throw new Error(`Device limit reached (${deviceLimit} authorized devices)`);
+    }
+  }
+
   const credentialHash = generateDeviceCredentialHash(installationId);
 
   const { data, error } = await adminClient
@@ -54,6 +82,54 @@ export async function registerDevice(
     },
     deviceCredentialHash: credentialHash,
   };
+}
+
+/**
+ * Replace an existing authorized device with a new one.
+ * Revokes the old device and registers the new one.
+ * Enforces device limits.
+ */
+export async function replaceDevice(
+  adminClient: SupabaseClient,
+  userId: string,
+  oldDeviceId: string,
+  installationId: string,
+  deviceName?: string,
+  platform?: string,
+  deviceLimit?: number,
+) {
+  // Verify the old device belongs to the user and is authorized
+  const { data: oldDevice, error: oldDeviceError } = await adminClient
+    .from('devices')
+    .select('id, is_authorized, is_revoked')
+    .eq('id', oldDeviceId)
+    .eq('user_id', userId)
+    .single();
+
+  if (oldDeviceError || !oldDevice) {
+    throw new Error('Device not found');
+  }
+
+  if (!oldDevice.is_authorized || oldDevice.is_revoked) {
+    throw new Error('Device is not authorized or is revoked');
+  }
+
+  // Check device limit (the old device will be revoked, so we check against limit - 1)
+  if (deviceLimit !== undefined && deviceLimit > 0) {
+    const authorizedCount = await countAuthorizedDevices(adminClient, userId);
+    if (authorizedCount > deviceLimit) {
+      throw new Error(`Device limit exceeded (${deviceLimit} authorized devices)`);
+    }
+  }
+
+  // Revoke the old device
+  await adminClient
+    .from('devices')
+    .update({ is_revoked: true, is_authorized: false })
+    .eq('id', oldDeviceId);
+
+  // Register the new device
+  return registerDevice(adminClient, userId, installationId, deviceName, platform, deviceLimit);
 }
 
 /**
@@ -134,8 +210,22 @@ export async function revokeDevice(adminClient: SupabaseClient, deviceId: string
 }
 
 /**
+ * Revoke all sessions for a device.
+ */
+export async function revokeDeviceSessions(adminClient: SupabaseClient, deviceId: string) {
+  const { error } = await adminClient
+    .from('device_sessions')
+    .update({ is_revoked: true })
+    .eq('device_id', deviceId)
+    .eq('is_revoked', false);
+
+  if (error) throw error;
+}
+
+/**
  * Update device last_seen timestamp.
  */
 export async function updateDeviceLastSeen(adminClient: SupabaseClient, deviceId: string) {
   await adminClient.from('devices').update({ last_seen_at: new Date().toISOString() }).eq('id', deviceId);
 }
+
