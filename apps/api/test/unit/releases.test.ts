@@ -111,8 +111,15 @@ describe('checkForUpdate', () => {
   });
 
   it('returns no update when channel not found', async () => {
+    const chain = {};
+    chain.select = vi.fn().mockReturnValue(chain);
+    chain.eq = vi.fn().mockReturnValue(chain);
+    chain.single = vi.fn().mockResolvedValue({
+      data: null,
+      error: { code: 'PGRST116' },
+    });
     const userClient = {
-      from: vi.fn().mockReturnThis(),
+      from: vi.fn().mockReturnValue(chain),
     } as any;
     const result = await checkForUpdate(userClient as any, {
       platform: 'windows',
@@ -128,8 +135,15 @@ describe('checkForUpdate', () => {
 
 describe('listReleaseChannels', () => {
   it('returns active release channels', async () => {
+    const chain = {};
+    chain.select = vi.fn().mockReturnValue(chain);
+    chain.eq = vi.fn().mockReturnValue(chain);
+    chain.single = vi.fn().mockResolvedValue({
+      data: null,
+      error: { code: 'PGRST116' },
+    });
     const userClient = {
-      from: vi.fn().mockReturnThis(),
+      from: vi.fn().mockReturnValue(chain),
     } as any;
     const result = await listReleaseChannels(userClient as any);
     expect(result.channels).toEqual([]);
@@ -139,7 +153,10 @@ describe('listReleaseChannels', () => {
 describe('listReleases', () => {
   it('returns releases list', async () => {
     const adminClient = {
-      from: vi.fn().mockReturnThis(),
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnThis(),
+        order: vi.fn().mockResolvedValue({ data: [], error: null }),
+      }),
     } as any;
     const result = await listReleases(adminClient as any);
     expect(result.releases).toEqual([]);

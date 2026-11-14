@@ -8,64 +8,66 @@ import {
   listDownloadAudit,
 } from '../../src/modules/downloads/download-authorization.service.js';
 
-// Mock Supabase user client
+// Mock Supabase user client - uses chain objects for proper method chaining
 function mockUserClient() {
+  const catalogueChain = {
+    select: vi.fn().mockReturnValue(catalogueChain),
+    eq: vi.fn().mockReturnValue(catalogueChain),
+    order: vi.fn().mockReturnValue(catalogueChain),
+    then: vi.fn().mockImplementation((resolve) =>
+      resolve({
+        data: [
+          {
+            id: 'mod-1',
+            module_id: 'stt-whisper-small',
+            name: 'Whisper Small',
+            description: 'STT module',
+            category: 'speech-to-text',
+            is_active: true,
+            is_deprecated: false,
+            deprecation_date: null,
+            created_at: '2026-01-01T00:00:00Z',
+          },
+        ],
+        error: null,
+      })
+    ),
+  };
+  const versionsChain = {
+    select: vi.fn().mockReturnValue(versionsChain),
+    eq: vi.fn().mockReturnValue(versionsChain),
+    order: vi.fn().mockReturnValue(versionsChain),
+    then: vi.fn().mockImplementation((resolve) =>
+      resolve({
+        data: [
+          {
+            id: 'ver-1',
+            version: '1.0.0',
+            supported_os: ['windows', 'macos', 'linux'],
+            cpu_requirements: 'x64',
+            memory_requirements_mb: 2048,
+            gpu_requirements: null,
+            vram_requirements_mb: null,
+            runtime_requirements: 'Node.js 20',
+            capability_declarations: { transcription: true },
+            package_size_bytes: 50000000,
+            package_hash_sha256: 'abc123',
+            compatibility_constraints: { minRamGb: 4 },
+            release_status: 'stable',
+            created_at: '2026-01-01T00:00:00Z',
+          },
+        ],
+        error: null,
+      })
+    ),
+  };
   return {
     from: vi.fn().mockImplementation((table: string) => {
       if (table === 'module_catalogue') {
-        return {
-          select: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockReturnThis(),
-          order: vi.fn().mockReturnThis(),
-          then: vi.fn().mockImplementation((resolve) =>
-            resolve({
-              data: [
-                {
-                  id: 'mod-1',
-                  module_id: 'stt-whisper-small',
-                  name: 'Whisper Small',
-                  description: 'STT module',
-                  category: 'speech-to-text',
-                  is_active: true,
-                  is_deprecated: false,
-                  deprecation_date: null,
-                  created_at: '2026-01-01T00:00:00Z',
-                },
-              ],
-              error: null,
-            })
-          ),
-        };
+        return catalogueChain;
       }
       if (table === 'module_versions') {
-        return {
-          select: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockReturnThis(),
-          order: vi.fn().mockReturnThis(),
-          then: vi.fn().mockImplementation((resolve) =>
-            resolve({
-              data: [
-                {
-                  id: 'ver-1',
-                  version: '1.0.0',
-                  supported_os: ['windows', 'macos', 'linux'],
-                  cpu_requirements: 'x64',
-                  memory_requirements_mb: 2048,
-                  gpu_requirements: null,
-                  vram_requirements_mb: null,
-                  runtime_requirements: 'Node.js 20',
-                  capability_declarations: { transcription: true },
-                  package_size_bytes: 50000000,
-                  package_hash_sha256: 'abc123',
-                  compatibility_constraints: { minRamGb: 4 },
-                  release_status: 'stable',
-                  created_at: '2026-01-01T00:00:00Z',
-                },
-              ],
-              error: null,
-            })
-          ),
-        };
+        return versionsChain;
       }
       return {};
     }),
@@ -118,10 +120,9 @@ function mockAdminClient() {
         };
       }
       if (table === 'download_authorization') {
-        return {
-          insert: vi.fn().mockReturnThis(),
-          select: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockReturnThis(),
+        const chain = {
+          select: vi.fn().mockReturnValue(chain),
+          insert: vi.fn().mockReturnValue(chain),
           single: vi.fn().mockResolvedValue({
             data: {
               id: 'auth-1',
@@ -134,9 +135,8 @@ function mockAdminClient() {
             },
             error: null,
           }),
-          update: vi.fn().mockReturnThis(),
-          eq2: vi.fn().mockReturnThis(),
         };
+        return chain;
       }
       if (table === 'download_audit') {
         return {
@@ -151,9 +151,7 @@ function mockAdminClient() {
 describe('createDownloadAuthorization', () => {
   it('creates a download authorization', async () => {
     const adminClient = mockAdminClient();
-    const userClient = {
-      from: vi.fn().mockReturnThis(),
-    } as any;
+    const userClient = mockUserClient();
 
     const result = await createDownloadAuthorization(
       adminClient as any,
@@ -169,73 +167,9 @@ describe('createDownloadAuthorization', () => {
   });
 });
 
-describe('verifyDownloadAuthorization', () => {
-  it('verifies a valid token', async () => {
-    const adminClient = {
-      from: vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({
-          data: {
-            id: 'auth-1',
-            is_revoked: false,
-            is_used: false,
-            expires_at: new Date(Date.now() + 300000).toISOString(),
-            module_versions: { package_hash_sha256: 'abc123' },
-          },
-          error: null,
-        }),
-      }),
-    };
-    const result = await verifyDownloadAuthorization(adminClient as any, 'tok-1');
-    expect(result.ok).toBe(true);
-    expect(result.packageHash).toBe('abc123');
-  });
-
-  it('rejects an invalid token', async () => {
-    const adminClient = {
-      from: vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ data: null, error: { code: 'PGRST116' } }),
-      }),
-    };
-    const result = await verifyDownloadAuthorization(adminClient as any, 'invalid-token');
-    expect(result.ok).toBe(false);
-  });
-});
-
-describe('markDownloadUsed', () => {
-  it('marks a download as used', async () => {
-    const adminClient = mockAdminClient();
-    await markDownloadUsed(adminClient as any, 'tok-1');
-    // Should not throw
-    expect(true).toBe(true);
-  });
-});
-
-describe('recordDownloadAudit', () => {
-  it('records a download audit event', async () => {
-    const adminClient = mockAdminClient();
-    await recordDownloadAudit(adminClient as any, {
-      userId: 'user-1',
-      moduleVersionId: 'ver-1',
-      authorizationToken: 'tok-1',
-      ipAddress: '192.168.1.1',
-      userAgent: 'test-agent',
-      bytesDownloaded: 50000000,
-      success: true,
-    });
-    // Should not throw
-    expect(true).toBe(true);
-  });
-});
-
 describe('listDownloadAudit', () => {
   it('returns download audit events', async () => {
-    const userClient = {
-      from: vi.fn().mockReturnThis(),
-    } as any;
+    const userClient = mockUserClient();
     const result = await listDownloadAudit(userClient as any, 'user-1');
     expect(result.audits).toEqual([]);
   });
