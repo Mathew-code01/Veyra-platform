@@ -35,13 +35,14 @@ export async function checkForUpdate(
   }
 
   // Get releases for this channel, platform, architecture
-  // Filter by version >= currentVersion (simple semver comparison)
+  // Exclude revoked releases. Filter by version >= currentVersion.
   const { data: releases, error: releaseError } = await userClient
     .from('desktop_releases')
     .select('*')
     .eq('channel_id', channelData.id)
     .eq('platform', platform)
     .eq('architecture', architecture)
+    .eq('is_revoked', false)
     .order('version', { ascending: false });
 
   if (releaseError) throw releaseError;
@@ -267,3 +268,39 @@ export async function seedDevReleases(
 
   return { seeded: releases.length };
 }
+
+/**
+ * Revoke a release (admin operation).
+ * Revoked releases are excluded from update checks.
+ */
+export async function revokeRelease(
+  adminClient: ReturnType<typeof getSupabaseAdmin>,
+  releaseId: string,
+): Promise<{ revoked: boolean }> {
+  const { error } = await adminClient
+    .from('desktop_releases')
+    .update({ is_revoked: true })
+    .eq('id', releaseId);
+
+  if (error) throw error;
+
+  return { revoked: true };
+}
+
+/**
+ * Unrevoke a release (admin operation).
+ */
+export async function unrevokeRelease(
+  adminClient: ReturnType<typeof getSupabaseAdmin>,
+  releaseId: string,
+): Promise<{ unrevoked: boolean }> {
+  const { error } = await adminClient
+    .from('desktop_releases')
+    .update({ is_revoked: false })
+    .eq('id', releaseId);
+
+  if (error) throw error;
+
+  return { unrevoked: true };
+}
+
