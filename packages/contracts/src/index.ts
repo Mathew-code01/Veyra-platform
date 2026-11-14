@@ -352,3 +352,60 @@ export const PaymentTransactionResponseSchema = z.object({
 });
 
 export type PaymentTransactionResponse = z.infer<typeof PaymentTransactionResponseSchema>;
+
+// --- Cloud AI Gateway ---
+
+export const AIInvokeRequestSchema = z.object({
+  modelId: z.string().uuid(),
+  capability: z.string().min(1),
+  input: z.string().min(1),
+  consent: z.boolean().refine((v) => v === true, {
+    message: 'Consent is required for cloud AI execution',
+  }),
+  stream: z.boolean().default(false),
+});
+
+export type AIInvokeRequest = z.infer<typeof AIInvokeRequestSchema>;
+
+export const AIInvokeResponseSchema = z.object({
+  ok: z.literal(true),
+  requestId: z.string(),
+  result: z.string(),
+  modelId: z.string(),
+  capability: z.string(),
+  tokensInput: z.number().int().optional(),
+  tokensOutput: z.number().int().optional(),
+  costCents: z.number().int(),
+  creditsUsed: z.number().int(),
+  stream: z.boolean().default(false),
+});
+
+export type AIInvokeResponse = z.infer<typeof AIInvokeResponseSchema>;
+
+export const AIModelInfoSchema = z.object({
+  id: z.string(),
+  modelId: z.string(),
+  name: z.string(),
+  providerId: z.string(),
+  providerName: z.string(),
+  contextLimit: z.number().int().optional(),
+  inputModalities: z.array(z.string()),
+  outputModalities: z.array(z.string()),
+  supportsVision: z.boolean(),
+  supportsAudio: z.boolean(),
+  supportsStreaming: z.boolean(),
+  supportsStructuredOutput: z.boolean(),
+  capabilities: z.array(z.string()),
+  isAvailable: z.boolean(),
+});
+
+export type AIModelInfo = z.infer<typeof AIModelInfoSchema>;
+
+export const AIModelListResponseSchema = z.object({
+  ok: z.literal(true),
+  requestId: z.string(),
+  models: z.array(AIModelInfoSchema),
+});
+
+export type AIModelListResponse = z.infer<typeof AIModelListResponseSchema>;
+

@@ -11,6 +11,7 @@ import plansPlugin from './modules/plans/plans.routes.ts';
 import subscriptionsPlugin from './modules/subscriptions/subscriptions.routes.ts';
 import paymentsPlugin from './modules/payments/payments.routes.ts';
 import creditsPlugin from './modules/credits/credits.routes.ts';
+import aiGatewayPlugin from './modules/ai-gateway/ai-gateway.routes.ts';
 import healthPlugin from './routes/health.ts';
 import { getLogger } from './lib/logger.ts';
 import { buildServerConfig } from './config/server.ts';
@@ -73,6 +74,9 @@ export async function buildApp(): Promise<ReturnType<typeof fastify>> {
 
   // Credits routes (balance, reserve, settle, release)
   await app.register(creditsPlugin, { prefix: '/api/v1/credits' });
+
+  // Cloud AI gateway routes (invoke, models)
+  await app.register(aiGatewayPlugin, { prefix: '/api/v1/ai' });
 
   // 404 handler (setNotFoundHandler avoids method conflicts with CORS)
   app.setNotFoundHandler((request, reply) => {
