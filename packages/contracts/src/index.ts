@@ -903,3 +903,106 @@ export const UserCountryResponseSchema = z.object({
 
 export type UserCountryResponse = z.infer<typeof UserCountryResponseSchema>;
 
+// --- AI Execution Modes and Billing ---
+
+export const ExecutionModeSchema = z.enum([
+  'cloud_only',
+  'local_only',
+  'local_plus_cloud',
+  'byok_only',
+  'byok_plus_local',
+  'byok_plus_cloud',
+]);
+
+export type ExecutionMode = z.infer<typeof ExecutionModeSchema>;
+
+export const BillingOwnerSchema = z.enum(['veyra', 'user', 'shared']);
+
+export type BillingOwner = z.infer<typeof BillingOwnerSchema>;
+
+export const AIUsageDimensionSchema = z.enum([
+  'input_tokens',
+  'output_tokens',
+  'audio_seconds',
+  'tts_characters',
+  'vision_images',
+  'image_generations',
+  'screen_understanding',
+]);
+
+export type AIUsageDimension = z.infer<typeof AIUsageDimensionSchema>;
+
+export const AIInvokeRequestV2Schema = z.object({
+  modelId: z.string().uuid(),
+  capability: z.string().min(1),
+  input: z.string().min(1),
+  consent: z.boolean().refine((v) => v === true, {
+    message: 'Consent is required for cloud AI execution',
+  }),
+  stream: z.boolean().default(false),
+  executionMode: ExecutionModeSchema.default('cloud_only'),
+  byokProvider: z.string().optional(),
+  byokModelId: z.string().optional(),
+  maxSpendCents: z.number().int().nonnegative().optional(),
+});
+
+export type AIInvokeRequestV2 = z.infer<typeof AIInvokeRequestV2Schema>;
+
+export const AIInvokeResponseV2Schema = z.object({
+  ok: z.literal(true),
+  requestId: z.string(),
+  result: z.string(),
+  modelId: z.string(),
+  capability: z.string(),
+  executionMode: ExecutionModeSchema,
+  billingOwner: BillingOwnerSchema,
+  tokensInput: z.number().int().optional(),
+  tokensOutput: z.number().int().optional(),
+  audioSeconds: z.number().int().optional(),
+  ttsCharacters: z.number().int().optional(),
+  visionImages: z.number().int().optional(),
+  costCents: z.number().int(),
+  creditsUsed: z.number().int(),
+  stream: z.boolean().default(false),
+});
+
+export type AIInvokeResponseV2 = z.infer<typeof AIInvokeResponseV2Schema>;
+
+export const AIUsageRecordSchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  modelId: z.string(),
+  capability: z.string(),
+  executionMode: ExecutionModeSchema,
+  billingOwner: BillingOwnerSchema,
+  tokensInput: z.number().int().optional(),
+  tokensOutput: z.number().int().optional(),
+  audioSeconds: z.number().int().optional(),
+  ttsCharacters: z.number().int().optional(),
+  visionImages: z.number().int().optional(),
+  costCents: z.number().int(),
+  creditsUsed: z.number().int(),
+  createdAt: z.string(),
+});
+
+export type AIUsageRecord = z.infer<typeof AIUsageRecordSchema>;
+
+export const AIUsageListResponseSchema = z.object({
+  ok: z.literal(true),
+  requestId: z.string(),
+  usage: z.array(AIUsageRecordSchema),
+});
+
+export type AIUsageListResponse = z.infer<typeof AIUsageListResponseSchema>;
+
+export const SpendLimitSchema = z.object({
+  userId: z.string(),
+  modelId: z.string().optional(),
+  capability: z.string().optional(),
+  dailyLimitCents: z.number().int().nonnegative(),
+  monthlyLimitCents: z.number().int().nonnegative(),
+  isActive: z.boolean().default(true),
+});
+
+export type SpendLimit = z.infer<typeof SpendLimitSchema>;
+

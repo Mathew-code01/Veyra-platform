@@ -1,6 +1,8 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { AIInvokeRequestSchema } from '../../../../../packages/contracts/src/index.ts';
+import {
+  AIInvokeRequestV2Schema,
+} from '../../../../../packages/contracts/src/index.ts';
 import { getSupabaseAdmin, getSupabaseUser } from '../../integrations/supabase/client.js';
 import { invokeCloudAI } from './ai-gateway.service.js';
 import { authenticateUser } from '../auth/auth.service.js';
@@ -12,9 +14,9 @@ const aiGatewayPlugin: FastifyPluginAsync = async (fastify) => {
     async (request, reply) => {
       const requestId = request.id ?? 'unknown';
 
-      let body: z.infer<typeof AIInvokeRequestSchema>;
+      let body: z.infer<typeof AIInvokeRequestV2Schema>;
       try {
-        body = AIInvokeRequestSchema.parse(request.body);
+        body = AIInvokeRequestV2Schema.parse(request.body);
       } catch {
         return reply.status(400).send({
           ok: false,
@@ -66,6 +68,10 @@ const aiGatewayPlugin: FastifyPluginAsync = async (fastify) => {
           input: body.input,
           consent: body.consent,
           stream: body.stream,
+          executionMode: body.executionMode,
+          byokProvider: body.byokProvider,
+          byokModelId: body.byokModelId,
+          maxSpendCents: body.maxSpendCents,
         });
 
         if (!result.ok) {
@@ -86,8 +92,13 @@ const aiGatewayPlugin: FastifyPluginAsync = async (fastify) => {
           result: result.result,
           modelId: result.modelId,
           capability: result.capability,
+          executionMode: result.executionMode,
+          billingOwner: result.billingOwner,
           tokensInput: result.tokensInput,
           tokensOutput: result.tokensOutput,
+          audioSeconds: result.audioSeconds,
+          ttsCharacters: result.ttsCharacters,
+          visionImages: result.visionImages,
           costCents: result.costCents,
           creditsUsed: result.creditsUsed,
           stream: body.stream,
