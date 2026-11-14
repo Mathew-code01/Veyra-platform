@@ -409,3 +409,89 @@ export const AIModelListResponseSchema = z.object({
 
 export type AIModelListResponse = z.infer<typeof AIModelListResponseSchema>;
 
+// --- Module Catalogue ---
+
+export const ModuleCatalogueEntrySchema = z.object({
+  id: z.string(),
+  moduleId: z.string(),
+  name: z.string(),
+  description: z.string().optional(),
+  category: z.string(),
+  isActive: z.boolean(),
+  isDeprecated: z.boolean(),
+  deprecationDate: z.string().optional(),
+  createdAt: z.string(),
+});
+
+export type ModuleCatalogueEntry = z.infer<typeof ModuleCatalogueEntrySchema>;
+
+export const ModuleCatalogueListResponseSchema = z.object({
+  ok: z.literal(true),
+  requestId: z.string(),
+  modules: z.array(ModuleCatalogueEntrySchema),
+});
+
+export type ModuleCatalogueListResponse = z.infer<typeof ModuleCatalogueListResponseSchema>;
+
+export const ModuleVersionManifestSchema = z.object({
+  id: z.string(),
+  version: z.string(),
+  supportedOs: z.array(z.string()),
+  cpuRequirements: z.string().optional(),
+  memoryRequirementsMb: z.number().int().optional(),
+  gpuRequirements: z.string().optional(),
+  vramRequirementsMb: z.number().int().optional(),
+  runtimeRequirements: z.string().optional(),
+  capabilityDeclarations: z.record(z.string(), z.boolean()),
+  packageSizeBytes: z.number().int().optional(),
+  packageHashSha256: z.string().optional(),
+  compatibilityConstraints: z.record(z.string(), z.unknown()),
+  releaseStatus: z.string(),
+  createdAt: z.string(),
+});
+
+export type ModuleVersionManifest = z.infer<typeof ModuleVersionManifestSchema>;
+
+export const ModuleVersionListResponseSchema = z.object({
+  ok: z.literal(true),
+  requestId: z.string(),
+  moduleId: z.string(),
+  versions: z.array(ModuleVersionManifestSchema),
+});
+
+export type ModuleVersionListResponse = z.infer<typeof ModuleVersionListResponseSchema>;
+
+export const DownloadAuthorizationRequestSchema = z.object({
+  moduleVersionId: z.string().uuid(),
+});
+
+export type DownloadAuthorizationRequest = z.infer<typeof DownloadAuthorizationRequestSchema>;
+
+export const DownloadAuthorizationResponseSchema = z.object({
+  ok: z.literal(true),
+  requestId: z.string(),
+  authorizationToken: z.string(),
+  expiresAt: z.string(),
+  downloadUrl: z.string().url(),
+});
+
+export type DownloadAuthorizationResponse = z.infer<typeof DownloadAuthorizationResponseSchema>;
+
+export const DownloadAuditSchema = z.object({
+  id: z.string(),
+  moduleVersionId: z.string().optional(),
+  downloadedAt: z.string(),
+  success: z.boolean(),
+  errorMessage: z.string().optional(),
+});
+
+export type DownloadAudit = z.infer<typeof DownloadAuditSchema>;
+
+export const DownloadAuditListResponseSchema = z.object({
+  ok: z.literal(true),
+  requestId: z.string(),
+  audits: z.array(DownloadAuditSchema),
+});
+
+export type DownloadAuditListResponse = z.infer<typeof DownloadAuditListResponseSchema>;
+

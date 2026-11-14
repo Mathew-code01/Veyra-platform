@@ -12,6 +12,8 @@ import subscriptionsPlugin from './modules/subscriptions/subscriptions.routes.ts
 import paymentsPlugin from './modules/payments/payments.routes.ts';
 import creditsPlugin from './modules/credits/credits.routes.ts';
 import aiGatewayPlugin from './modules/ai-gateway/ai-gateway.routes.ts';
+import modulesPlugin from './modules/modules/module-catalogue.routes.ts';
+import downloadsPlugin from './modules/downloads/download-authorization.routes.ts';
 import healthPlugin from './routes/health.ts';
 import { getLogger } from './lib/logger.ts';
 import { buildServerConfig } from './config/server.ts';
@@ -74,6 +76,12 @@ export async function buildApp(): Promise<ReturnType<typeof fastify>> {
 
   // Credits routes (balance, reserve, settle, release)
   await app.register(creditsPlugin, { prefix: '/api/v1/credits' });
+
+  // Module catalogue routes (modules, versions)
+  await app.register(modulesPlugin, { prefix: '/api/v1/modules' });
+
+  // Download authorization routes (authorize, verify, audit)
+  await app.register(downloadsPlugin, { prefix: '/api/v1/downloads' });
 
   // Cloud AI gateway routes (invoke, models)
   await app.register(aiGatewayPlugin, { prefix: '/api/v1/ai' });
