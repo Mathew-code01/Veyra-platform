@@ -5,6 +5,8 @@ import rateLimit from '@fastify/rate-limit';
 import requestIdPlugin from './middleware/request-id.ts';
 import errorHandlerPlugin from './middleware/error-handler.ts';
 import authPlugin from './modules/auth/auth.routes.ts';
+import devicesPlugin from './modules/devices/devices.routes.ts';
+import entitlementsPlugin from './modules/entitlements/entitlements.routes.ts';
 import healthPlugin from './routes/health.ts';
 import { getLogger } from './lib/logger.ts';
 import { buildServerConfig } from './config/server.ts';
@@ -49,6 +51,12 @@ export async function buildApp(): Promise<ReturnType<typeof fastify>> {
 
   // Auth routes (registration, login, logout, profile, etc.)
   await app.register(authPlugin, { prefix: '/api/v1/auth' });
+
+  // Device routes (registration, listing, authorization, revocation)
+  await app.register(devicesPlugin, { prefix: '/api/v1/devices' });
+
+  // Entitlement routes (check, list, snapshot)
+  await app.register(entitlementsPlugin, { prefix: '/api/v1/entitlements' });
 
   // 404 handler (setNotFoundHandler avoids method conflicts with CORS)
   app.setNotFoundHandler((request, reply) => {

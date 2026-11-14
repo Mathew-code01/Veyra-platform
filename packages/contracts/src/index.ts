@@ -137,3 +137,104 @@ export const AuthenticatedUserSchema = z.object({
 });
 
 export type AuthenticatedUser = z.infer<typeof AuthenticatedUserSchema>;
+
+// --- Devices ---
+
+export const DeviceRegisterRequestSchema = z.object({
+  installationId: z.string().min(1),
+  deviceName: z.string().min(1).max(100).optional(),
+  platform: z.enum(['windows', 'macos', 'linux']).optional(),
+});
+
+export type DeviceRegisterRequest = z.infer<typeof DeviceRegisterRequestSchema>;
+
+export const DeviceResponseSchema = z.object({
+  ok: z.literal(true),
+  requestId: z.string(),
+  device: z.object({
+    id: z.string(),
+    installationId: z.string(),
+    deviceName: z.string().optional(),
+    platform: z.string().optional(),
+    isAuthorized: z.boolean(),
+    isRevoked: z.boolean(),
+    lastSeenAt: z.string().optional(),
+    createdAt: z.string(),
+  }),
+});
+
+export type DeviceResponse = z.infer<typeof DeviceResponseSchema>;
+
+export const DeviceListResponseSchema = z.object({
+  ok: z.literal(true),
+  requestId: z.string(),
+  devices: z.array(
+    z.object({
+      id: z.string(),
+      installationId: z.string(),
+      deviceName: z.string().optional(),
+      platform: z.string().optional(),
+      isAuthorized: z.boolean(),
+      isRevoked: z.boolean(),
+      lastSeenAt: z.string().optional(),
+      createdAt: z.string(),
+    }),
+  ),
+});
+
+export type DeviceListResponse = z.infer<typeof DeviceListResponseSchema>;
+
+export const DeviceAuthorizeRequestSchema = z.object({
+  deviceId: z.string().uuid(),
+});
+
+export type DeviceAuthorizeRequest = z.infer<typeof DeviceAuthorizeRequestSchema>;
+
+export const DeviceRevokeRequestSchema = z.object({
+  deviceId: z.string().uuid(),
+});
+
+export type DeviceRevokeRequest = z.infer<typeof DeviceRevokeRequestSchema>;
+
+// --- Entitlements ---
+
+export const EntitlementCheckRequestSchema = z.object({
+  capability: z.string().min(1),
+});
+
+export type EntitlementCheckRequest = z.infer<typeof EntitlementCheckRequestSchema>;
+
+export const EntitlementCheckResponseSchema = z.object({
+  ok: z.literal(true),
+  requestId: z.string(),
+  capability: z.string(),
+  entitled: z.boolean(),
+  reason: z.string().optional(),
+  expiresAt: z.string().optional(),
+});
+
+export type EntitlementCheckResponse = z.infer<typeof EntitlementCheckResponseSchema>;
+
+export const EntitlementSnapshotResponseSchema = z.object({
+  ok: z.literal(true),
+  requestId: z.string(),
+  snapshot: z.string(), // signed JWT
+  expiresAt: z.string(),
+});
+
+export type EntitlementSnapshotResponse = z.infer<typeof EntitlementSnapshotResponseSchema>;
+
+export const EntitlementListResponseSchema = z.object({
+  ok: z.literal(true),
+  requestId: z.string(),
+  entitlements: z.array(
+    z.object({
+      capability: z.string(),
+      entitled: z.boolean(),
+      reason: z.string().optional(),
+      expiresAt: z.string().optional(),
+    }),
+  ),
+});
+
+export type EntitlementListResponse = z.infer<typeof EntitlementListResponseSchema>;
