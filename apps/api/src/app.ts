@@ -21,6 +21,7 @@ import backupsPlugin from './modules/backups/backup.routes.ts';
 import notificationsPlugin from './modules/notifications/notification.routes.ts';
 import adminPlugin from './modules/admin/admin.routes.ts';
 import accountPlugin from './modules/account/account.routes.ts';
+import securityPlugin from './middleware/security.middleware.ts';
 import healthPlugin from './routes/health.ts';
 import { getLogger } from './lib/logger.ts';
 import { buildServerConfig } from './config/server.ts';
@@ -59,6 +60,9 @@ export async function buildApp(): Promise<ReturnType<typeof fastify>> {
 
   // Structured error handling
   await app.register(errorHandlerPlugin, { isProduction: config.isProduction });
+
+  // Security middleware (headers, rate limiting)
+  await app.register(securityPlugin);
 
   // Health / version routes (unauthenticated, no secrets)
   await app.register(healthPlugin, { prefix: '/api/v1' });
