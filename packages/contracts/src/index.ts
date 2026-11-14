@@ -1006,3 +1006,82 @@ export const SpendLimitSchema = z.object({
 
 export type SpendLimit = z.infer<typeof SpendLimitSchema>;
 
+// --- Pricing Engine ---
+
+export const PricingRuleSchema = z.object({
+  id: z.string(),
+  modelId: z.string().optional(),
+  providerId: z.string().optional(),
+  modality: z.string().optional(),
+  region: z.string().length(2).optional(),
+  inputPricePerUnitCents: z.number().int().nonnegative(),
+  outputPricePerUnitCents: z.number().int().nonnegative(),
+  currency: z.string().length(3),
+  effectiveFrom: z.string(),
+  effectiveTo: z.string().optional(),
+  isActive: z.boolean().default(true),
+});
+
+export type PricingRule = z.infer<typeof PricingRuleSchema>;
+
+export const PricingRuleListResponseSchema = z.object({
+  ok: z.literal(true),
+  requestId: z.string(),
+  rules: z.array(PricingRuleSchema),
+});
+
+export type PricingRuleListResponse = z.infer<typeof PricingRuleListResponseSchema>;
+
+export const CreatePricingRuleRequestSchema = z.object({
+  modelId: z.string().optional(),
+  providerId: z.string().optional(),
+  modality: z.string().optional(),
+  region: z.string().length(2).optional(),
+  inputPricePerUnitCents: z.number().int().nonnegative(),
+  outputPricePerUnitCents: z.number().int().nonnegative(),
+  currency: z.string().length(3),
+  effectiveFrom: z.string(),
+  effectiveTo: z.string().optional(),
+});
+
+export type CreatePricingRuleRequest = z.infer<typeof CreatePricingRuleRequestSchema>;
+
+export const CreditAdjustmentResponseSchema = z.object({
+  ok: z.literal(true),
+  requestId: z.string(),
+  userId: z.string(),
+  amountCents: z.number().int(),
+  newBalance: z.number().int(),
+  transactionId: z.string(),
+});
+
+export type CreditAdjustmentResponse = z.infer<typeof CreditAdjustmentResponseSchema>;
+
+export const SubscriptionStatusResponseSchema = z.object({
+  ok: z.literal(true),
+  requestId: z.string(),
+  subscription: z.object({
+    id: z.string(),
+    userId: z.string(),
+    planId: z.string(),
+    status: z.string(),
+    currentPeriodStart: z.string(),
+    currentPeriodEnd: z.string(),
+    cancelAtPeriodEnd: z.boolean(),
+  }),
+});
+
+export type SubscriptionStatusResponse = z.infer<typeof SubscriptionStatusResponseSchema>;
+
+export const AdminStatsResponseSchema = z.object({
+  ok: z.literal(true),
+  requestId: z.string(),
+  totalUsers: z.number().int(),
+  totalSubscriptions: z.number().int(),
+  activeSubscriptions: z.number().int(),
+  totalRevenueCents: z.number().int(),
+  totalCreditsIssued: z.number().int(),
+});
+
+export type AdminStatsResponse = z.infer<typeof AdminStatsResponseSchema>;
+
