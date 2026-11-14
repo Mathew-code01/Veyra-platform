@@ -4,6 +4,7 @@ import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import requestIdPlugin from './middleware/request-id.ts';
 import errorHandlerPlugin from './middleware/error-handler.ts';
+import authPlugin from './modules/auth/auth.routes.ts';
 import healthPlugin from './routes/health.ts';
 import { getLogger } from './lib/logger.ts';
 import { buildServerConfig } from './config/server.ts';
@@ -45,6 +46,9 @@ export async function buildApp(): Promise<ReturnType<typeof fastify>> {
 
   // Health / version routes (unauthenticated, no secrets)
   await app.register(healthPlugin, { prefix: '/api/v1' });
+
+  // Auth routes (registration, login, logout, profile, etc.)
+  await app.register(authPlugin, { prefix: '/api/v1/auth' });
 
   // 404 handler (setNotFoundHandler avoids method conflicts with CORS)
   app.setNotFoundHandler((request, reply) => {

@@ -70,3 +70,70 @@ export const CorrelationIdHeaderSchema = z.object({
 });
 
 export type CorrelationIdHeaders = z.infer<typeof CorrelationIdHeaderSchema>;
+
+// --- Authentication ---
+
+export const RegisterRequestSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+});
+
+export type RegisterRequest = z.infer<typeof RegisterRequestSchema>;
+
+export const LoginRequestSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(1),
+});
+
+export type LoginRequest = z.infer<typeof LoginRequestSchema>;
+
+export const AuthResponseSchema = z.object({
+  ok: z.literal(true),
+  requestId: z.string(),
+  accessToken: z.string(),
+  refreshToken: z.string(),
+  expiresIn: z.number(),
+  user: z.object({
+    id: z.string(),
+    email: z.string(),
+    emailConfirmed: z.boolean(),
+  }),
+});
+
+export type AuthResponse = z.infer<typeof AuthResponseSchema>;
+
+export const PasswordRecoveryRequestSchema = z.object({
+  email: z.string().email(),
+});
+
+export type PasswordRecoveryRequest = z.infer<typeof PasswordRecoveryRequestSchema>;
+
+export const ProfileResponseSchema = z.object({
+  ok: z.literal(true),
+  requestId: z.string(),
+  profile: z.object({
+    id: z.string(),
+    email: z.string(),
+    displayName: z.string().optional(),
+    locale: z.string(),
+    status: z.string(),
+    createdAt: z.string(),
+  }),
+});
+
+export type ProfileResponse = z.infer<typeof ProfileResponseSchema>;
+
+export const UpdateProfileRequestSchema = z.object({
+  displayName: z.string().min(1).max(100).optional(),
+  locale: z.string().min(2).max(10).optional(),
+});
+
+export type UpdateProfileRequest = z.infer<typeof UpdateProfileRequestSchema>;
+
+export const AuthenticatedUserSchema = z.object({
+  id: z.string(),
+  email: z.string(),
+  emailConfirmed: z.boolean(),
+});
+
+export type AuthenticatedUser = z.infer<typeof AuthenticatedUserSchema>;
