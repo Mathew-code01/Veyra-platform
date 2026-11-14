@@ -7,6 +7,9 @@ import errorHandlerPlugin from './middleware/error-handler.ts';
 import authPlugin from './modules/auth/auth.routes.ts';
 import devicesPlugin from './modules/devices/devices.routes.ts';
 import entitlementsPlugin from './modules/entitlements/entitlements.routes.ts';
+import plansPlugin from './modules/plans/plans.routes.ts';
+import subscriptionsPlugin from './modules/subscriptions/subscriptions.routes.ts';
+import paymentsPlugin from './modules/payments/payments.routes.ts';
 import healthPlugin from './routes/health.ts';
 import { getLogger } from './lib/logger.ts';
 import { buildServerConfig } from './config/server.ts';
@@ -57,6 +60,15 @@ export async function buildApp(): Promise<ReturnType<typeof fastify>> {
 
   // Entitlement routes (check, list, snapshot)
   await app.register(entitlementsPlugin, { prefix: '/api/v1/entitlements' });
+
+  // Plans routes (plan catalogue)
+  await app.register(plansPlugin, { prefix: '/api/v1/plans' });
+
+  // Subscriptions routes (subscription management)
+  await app.register(subscriptionsPlugin, { prefix: '/api/v1/subscriptions' });
+
+  // Payments routes (checkout, webhooks, reconciliation)
+  await app.register(paymentsPlugin, { prefix: '/api/v1/payments' });
 
   // 404 handler (setNotFoundHandler avoids method conflicts with CORS)
   app.setNotFoundHandler((request, reply) => {

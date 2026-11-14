@@ -238,3 +238,117 @@ export const EntitlementListResponseSchema = z.object({
 });
 
 export type EntitlementListResponse = z.infer<typeof EntitlementListResponseSchema>;
+
+// --- Plans ---
+
+export const PlanResponseSchema = z.object({
+  ok: z.literal(true),
+  requestId: z.string(),
+  plan: z.object({
+    id: z.string(),
+    name: z.string(),
+    family: z.enum(['local', 'hybrid', 'cloud']),
+    description: z.string().optional(),
+    billingInterval: z.enum(['monthly', 'yearly']),
+    priceCents: z.number().int().nonnegative(),
+    currency: z.string().length(3),
+    features: z.record(z.string(), z.boolean()),
+    deviceLimit: z.number().int().positive(),
+    isActive: z.boolean(),
+    createdAt: z.string(),
+  }),
+});
+
+export type PlanResponse = z.infer<typeof PlanResponseSchema>;
+
+export const PlanListResponseSchema = z.object({
+  ok: z.literal(true),
+  requestId: z.string(),
+  plans: z.array(PlanResponseSchema.shape.plan),
+});
+
+export type PlanListResponse = z.infer<typeof PlanListResponseSchema>;
+
+// --- Subscriptions ---
+
+export const SubscriptionResponseSchema = z.object({
+  ok: z.literal(true),
+  requestId: z.string(),
+  subscription: z.object({
+    id: z.string(),
+    planId: z.string(),
+    planName: z.string(),
+    billingInterval: z.enum(['monthly', 'yearly']),
+    status: z.enum([
+      'inactive',
+      'trialing',
+      'active',
+      'past_due',
+      'canceled',
+      'unpaid',
+      'incomplete',
+      'incomplete_expired',
+      'grace_period',
+    ]),
+    currentPeriodStart: z.string(),
+    currentPeriodEnd: z.string(),
+    cancelAtPeriodEnd: z.boolean(),
+    canceledAt: z.string().optional(),
+    trialStart: z.string().optional(),
+    trialEnd: z.string().optional(),
+    createdAt: z.string(),
+    updatedAt: z.string(),
+  }),
+});
+
+export type SubscriptionResponse = z.infer<typeof SubscriptionResponseSchema>;
+
+export const CreateSubscriptionRequestSchema = z.object({
+  planId: z.string().uuid(),
+  billingInterval: z.enum(['monthly', 'yearly']),
+  paymentMethodId: z.string().optional(), // mock/test only
+});
+
+export type CreateSubscriptionRequest = z.infer<typeof CreateSubscriptionRequestSchema>;
+
+export const CancelSubscriptionRequestSchema = z.object({
+  subscriptionId: z.string().uuid(),
+  atPeriodEnd: z.boolean().default(true),
+});
+
+export type CancelSubscriptionRequest = z.infer<typeof CancelSubscriptionRequestSchema>;
+
+// --- Payments ---
+
+export const CheckoutSessionRequestSchema = z.object({
+  planId: z.string().uuid(),
+  billingInterval: z.enum(['monthly', 'yearly']),
+  successUrl: z.string().url(),
+  cancelUrl: z.string().url(),
+});
+
+export type CheckoutSessionRequest = z.infer<typeof CheckoutSessionRequestSchema>;
+
+export const CheckoutSessionResponseSchema = z.object({
+  ok: z.literal(true),
+  requestId: z.string(),
+  checkoutUrl: z.string().url(),
+  checkoutSessionId: z.string(),
+});
+
+export type CheckoutSessionResponse = z.infer<typeof CheckoutSessionResponseSchema>;
+
+export const PaymentTransactionResponseSchema = z.object({
+  ok: z.literal(true),
+  requestId: z.string(),
+  transaction: z.object({
+    id: z.string(),
+    subscriptionId: z.string(),
+    amountCents: z.number().int(),
+    currency: z.string().length(3),
+    status: z.enum(['pending', 'succeeded', 'failed', 'refunded', 'disputed']),
+    paymentDate: z.string(),
+  }),
+});
+
+export type PaymentTransactionResponse = z.infer<typeof PaymentTransactionResponseSchema>;

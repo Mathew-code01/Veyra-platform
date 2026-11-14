@@ -13,7 +13,7 @@ Phase 0 complete. This plan reflects the intended incremental implementation. It
 | 2 | Supabase foundation: config, migration strategy, initial schema, RLS, local/mock testing | Migrations valid; DB access scoped; no service secret exposed; setup docs complete | Complete |
 | 3 | Identity and accounts: Supabase Auth, account APIs, verification/recovery | Test-mode flows work; protected endpoints reject unauthenticated; ownership tested | Complete |
 | 4 | Devices and entitlements: device registration/revocation, session validation, offline snapshots | Unauthorized devices rejected; revoked devices lose access; snapshots signed + expiring | Complete |
-| 5 | Plans, subscriptions, payments: plan catalogue, subscription state machine, provider abstraction, webhooks (mock) | No live payment; duplicate webhooks idempotent; state not client-changeable | Pending |
+| 5 | Plans, subscriptions, payments: plan catalogue, subscription state machine, provider abstraction, webhooks (mock) | No live payment; duplicate webhooks idempotent; state not client-changeable | Complete |
 | 6 | Credits and usage ledger: transactional ledger, reservations, settlement, release | No double spend; concurrency-safe; failed ops release reservations | Pending |
 | 7 | Cloud AI gateway: authorized cloud execution behind provider interfaces | Unauthorized requests rejected; no silent paid fallback; usage recorded; no BYOK storage | Pending |
 | 8 | Models, modules and downloads: catalogue, manifests, compatibility, authorized distribution | Invalid manifests rejected; hash metadata present; no automatic large downloads | Pending |
