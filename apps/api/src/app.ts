@@ -15,6 +15,9 @@ import aiGatewayPlugin from './modules/ai-gateway/ai-gateway.routes.ts';
 import modulesPlugin from './modules/modules/module-catalogue.routes.ts';
 import downloadsPlugin from './modules/downloads/download-authorization.routes.ts';
 import releasesPlugin from './modules/releases/releases.routes.ts';
+import backupsPlugin from './modules/backups/backup.routes.ts';
+import notificationsPlugin from './modules/notifications/notification.routes.ts';
+import adminPlugin from './modules/admin/admin.routes.ts';
 import healthPlugin from './routes/health.ts';
 import { getLogger } from './lib/logger.ts';
 import { buildServerConfig } from './config/server.ts';
@@ -89,6 +92,15 @@ export async function buildApp(): Promise<ReturnType<typeof fastify>> {
 
   // Cloud AI gateway routes (invoke, models)
   await app.register(aiGatewayPlugin, { prefix: '/api/v1/ai' });
+
+  // Backup routes (backup metadata, consent)
+  await app.register(backupsPlugin, { prefix: '/api/v1/backups' });
+
+  // Notification routes (test email, provider status)
+  await app.register(notificationsPlugin, { prefix: '/api/v1/notifications' });
+
+  // Admin routes (user lookup, credit adjustment, device revoke, audit)
+  await app.register(adminPlugin, { prefix: '/api/v1/admin' });
 
   // 404 handler (setNotFoundHandler avoids method conflicts with CORS)
   app.setNotFoundHandler((request, reply) => {

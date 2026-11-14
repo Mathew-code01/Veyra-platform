@@ -573,3 +573,106 @@ export const ReleaseChannelsResponseSchema = z.object({
 
 export type ReleaseChannelsResponse = z.infer<typeof ReleaseChannelsResponseSchema>;
 
+// --- Backups, Notifications, Administration ---
+
+export const ConsentRecordSchema = z.object({
+  id: z.string(),
+  consentCategory: z.string(),
+  consentGiven: z.boolean(),
+  consentTimestamp: z.string(),
+  consentWithdrawn: z.boolean(),
+  withdrawnAt: z.string().optional(),
+  createdAt: z.string(),
+});
+
+export type ConsentRecord = z.infer<typeof ConsentRecordSchema>;
+
+export const BackupMetadataSchema = z.object({
+  id: z.string(),
+  backupCategory: z.string(),
+  encryptionEnabled: z.boolean(),
+  retentionDays: z.number().int(),
+  status: z.string(),
+  lastBackupAt: z.string().optional(),
+  nextBackupAt: z.string().optional(),
+  createdAt: z.string(),
+});
+
+export type BackupMetadata = z.infer<typeof BackupMetadataSchema>;
+
+export const AdminRoleSchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  role: z.string(),
+  isActive: z.boolean(),
+  grantedAt: z.string(),
+  expiresAt: z.string().optional(),
+});
+
+export type AdminRole = z.infer<typeof AdminRoleSchema>;
+
+export const AdminAuditEventSchema = z.object({
+  id: z.string(),
+  adminUserId: z.string(),
+  targetUserId: z.string().optional(),
+  action: z.string(),
+  targetType: z.string().optional(),
+  targetId: z.string().optional(),
+  metadata: z.record(z.string(), z.unknown()),
+  createdAt: z.string(),
+});
+
+export type AdminAuditEvent = z.infer<typeof AdminAuditEventSchema>;
+
+export const ConsentUpdateRequestSchema = z.object({
+  consentCategory: z.string(),
+  consentGiven: z.boolean(),
+});
+
+export type ConsentUpdateRequest = z.infer<typeof ConsentUpdateRequestSchema>;
+
+export const BackupStatusRequestSchema = z.object({
+  backupCategory: z.string(),
+});
+
+export type BackupStatusRequest = z.infer<typeof BackupStatusRequestSchema>;
+
+export const AdminUserLookupResponseSchema = z.object({
+  ok: z.literal(true),
+  requestId: z.string(),
+  user: z.object({
+    id: z.string(),
+    email: z.string(),
+    status: z.string(),
+    locale: z.string(),
+    createdAt: z.string(),
+  }),
+});
+
+export type AdminUserLookupResponse = z.infer<typeof AdminUserLookupResponseSchema>;
+
+export const AdminCreditAdjustmentRequestSchema = z.object({
+  userId: z.string().uuid(),
+  amountCents: z.number().int(),
+  reason: z.string(),
+  idempotencyKey: z.string(),
+});
+
+export type AdminCreditAdjustmentRequest = z.infer<typeof AdminCreditAdjustmentRequestSchema>;
+
+export const AdminDeviceRevokeRequestSchema = z.object({
+  deviceId: z.string().uuid(),
+  userId: z.string().uuid(),
+  reason: z.string(),
+});
+
+export type AdminDeviceRevokeRequest = z.infer<typeof AdminDeviceRevokeRequestSchema>;
+
+export const AdminAuditListResponseSchema = z.object({
+  ok: z.literal(true),
+  requestId: z.string(),
+  auditEvents: z.array(AdminAuditEventSchema),
+});
+
+export type AdminAuditListResponse = z.infer<typeof AdminAuditListResponseSchema>;
+
