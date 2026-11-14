@@ -164,6 +164,69 @@ export class VeyraClient {
   }
 
   // ========================================================================
+  // OAuth (Google / GitHub)
+  // ========================================================================
+
+  async getOAuthProviders() {
+    return this.request<{
+      ok: boolean;
+      requestId: string;
+      providers: Array<{
+        provider: 'google' | 'github';
+        configured: boolean;
+      }>;
+    }>('GET', '/api/v1/auth/oauth/providers');
+  }
+
+  async oauthAuthorize(body: {
+    provider: 'google' | 'github';
+    redirectTo?: string;
+  }) {
+    return this.request<{
+      ok: boolean;
+      requestId: string;
+      provider: 'google' | 'github';
+      authorizationUrl: string;
+      state: string;
+    }>('POST', '/api/v1/auth/oauth/authorize', body);
+  }
+
+  async oauthCallback(body: {
+    provider: 'google' | 'github';
+    code: string;
+    state: string;
+    redirectTo?: string;
+  }) {
+    return this.request<{
+      ok: boolean;
+      requestId: string;
+      accessToken: string;
+      refreshToken: string;
+      expiresIn: number;
+      user: {
+        id: string;
+        email: string;
+        emailConfirmed: boolean;
+        provider: 'google' | 'github';
+        isNewUser: boolean;
+      };
+    }>('POST', '/api/v1/auth/oauth/callback', body);
+  }
+
+  async oauthLink(body: {
+    provider: 'google' | 'github';
+    code: string;
+    state: string;
+  }) {
+    return this.request<{
+      ok: boolean;
+      requestId: string;
+      provider: 'google' | 'github';
+      linked: boolean;
+    }>('POST', '/api/v1/auth/oauth/link', body);
+  }
+
+  // ========================================================================
   // Devices
   // ========================================================================
 
@@ -326,6 +389,70 @@ export class VeyraClient {
         createdAt: string;
       };
     }>('GET', `/api/v1/plans/${planId}`);
+  }
+
+  // ========================================================================
+  // Pricing
+  // ========================================================================
+
+  async listPricingCountries() {
+    return this.request<{
+      ok: boolean;
+      requestId: string;
+      countries: Array<{
+        country: string;
+        countryName: string;
+        currency: string;
+        currencySymbol: string;
+        currencyExponent: number;
+        isSupported: boolean;
+      }>;
+    }>('GET', '/api/v1/pricing/countries');
+  }
+
+  async listCountryCurrencies(country: string) {
+    return this.request<{
+      ok: boolean;
+      requestId: string;
+      country: string;
+      currencies: Array<{
+        country: string;
+        currency: string;
+        currencySymbol: string;
+        currencyExponent: number;
+        isSupported: boolean;
+      }>;
+    }>('GET', `/api/v1/pricing/countries/${country}/currencies`);
+  }
+
+  async getPlanPricing(country: string, currency: string) {
+    return this.request<{
+      ok: boolean;
+      requestId: string;
+      country: string;
+      currency: string;
+      currencySymbol: string;
+      currencyExponent: number;
+      plans: Array<{
+        planId: string;
+        planName: string;
+        planFamily: string;
+        amountCents: number;
+        billingInterval: 'monthly' | 'yearly';
+        isAvailable: boolean;
+      }>;
+    }>('GET', `/api/v1/pricing/plans?country=${country}&currency=${currency}`);
+  }
+
+  async detectCountry() {
+    return this.request<{
+      ok: boolean;
+      requestId: string;
+      country: string;
+      currency: string;
+      currencySymbol: string;
+      detectedBy: 'user_preference' | 'geolocation' | 'default';
+    }>('GET', '/api/v1/pricing/detect');
   }
 
   // ========================================================================
@@ -774,6 +901,172 @@ export class VeyraClient {
       liveEmailsEnabled: boolean;
       message: string;
     }>('GET', '/api/v1/notifications/status');
+  }
+
+  // ========================================================================
+  // Account
+  // ========================================================================
+
+  async getAccountStatus() {
+    return this.request<{
+      ok: boolean;
+      requestId: string;
+      account: {
+        id: string;
+        email: string;
+        status: string;
+        locale: string;
+        createdAt: string;
+        updatedAt: string;
+        deletedAt: string | undefined;
+      };
+    }>('GET', '/api/v1/account/status');
+  }
+
+  async requestAccountDeletion(body: {
+    reason?: string;
+    confirmPassword: string;
+  }) {
+    return this.request<{
+      ok: boolean;
+      requestId: string;
+      accountId: string;
+      status: string;
+      deletionScheduledAt: string;
+      dataRetentionDays: number;
+    }>('POST', '/api/v1/account/deletion/request', body);
+  }
+
+  async requestAccountExport(body: {
+    includeAuditEvents?: boolean;
+    includeUsageRecords?: boolean;
+  }) {
+    return this.request<{
+      ok: boolean;
+      requestId: string;
+      exportId: string;
+      status: string;
+      downloadUrl: string | undefined;
+      expiresAt: string | undefined;
+    }>('POST', '/api/v1/account/export/request', body);
+  }
+
+  async adminListUserRoles(userId: string) {
+    return this.request<{
+      ok: boolean;
+      requestId: string;
+      roles: Array<{
+        id: string;
+        role: string;
+        isActive: boolean;
+        grantedAt: string;
+        grantedBy: string | null;
+      }>;
+    }>('GET', `/api/v1/admin/users/${userId}/roles`);
+  }
+
+  async adminAssignRole(body: {
+    userId: string;
+    role: 'admin' | 'support' | 'auditor' | 'billing';
+  }) {
+    return this.request<{
+      ok: boolean;
+      requestId: string;
+      userId: string;
+      role: string;
+      granted: boolean;
+    }>('POST', '/api/v1/admin/roles/assign', body);
+  }
+
+  async adminRevokeRole(body: {
+    userId: string;
+    role: 'admin' | 'support' | 'auditor' | 'billing';
+  }) {
+    return this.request<{
+      ok: boolean;
+      requestId: string;
+      userId: string;
+      role: string;
+      revoked: boolean;
+    }>('POST', '/api/v1/admin/roles/revoke', body);
+  }
+
+  // ========================================================================
+  // Pricing Engine (Admin)
+  // ========================================================================
+
+  async adminListPricingRules() {
+    return this.request<{
+      ok: boolean;
+      requestId: string;
+      rules: Array<{
+        id: string;
+        modelId: string | undefined;
+        providerId: string | undefined;
+        modality: string | undefined;
+        region: string | undefined;
+        inputPricePerUnitCents: number;
+        outputPricePerUnitCents: number;
+        currency: string;
+        effectiveFrom: string;
+        effectiveTo: string | undefined;
+        isActive: boolean;
+      }>;
+    }>('GET', '/api/v1/pricing-engine/admin/pricing-rules');
+  }
+
+  async adminCreatePricingRule(body: {
+    modelId?: string;
+    providerId?: string;
+    modality?: string;
+    region?: string;
+    inputPricePerUnitCents: number;
+    outputPricePerUnitCents: number;
+    currency: string;
+    effectiveFrom: string;
+    effectiveTo?: string;
+  }) {
+    return this.request<{
+      ok: boolean;
+      requestId: string;
+      rule: {
+        id: string;
+        modelId: string | undefined;
+        providerId: string | undefined;
+        modality: string | undefined;
+        region: string | undefined;
+        inputPricePerUnitCents: number;
+        outputPricePerUnitCents: number;
+        currency: string;
+        effectiveFrom: string;
+        effectiveTo: string | undefined;
+        isActive: boolean;
+      };
+    }>('POST', '/api/v1/pricing-engine/admin/pricing-rules', body);
+  }
+
+  async adminUpdatePricingRule(ruleId: string, body: {
+    inputPricePerUnitCents?: number;
+    outputPricePerUnitCents?: number;
+    isActive?: boolean;
+  }) {
+    return this.request<{
+      ok: boolean;
+      requestId: string;
+      rule: {
+        id: string;
+        modelId: string | undefined;
+        providerId: string | undefined;
+        modality: string | undefined;
+        region: string | undefined;
+        inputPricePerUnitCents: number;
+        outputPricePerUnitCents: number;
+        currency: string;
+        effectiveFrom: string;
+        effectiveTo: string | undefined;
+        isActive: boolean;
+      };
+    }>('PATCH', `/api/v1/pricing-engine/admin/pricing-rules/${ruleId}`, body);
   }
 
   // ========================================================================
