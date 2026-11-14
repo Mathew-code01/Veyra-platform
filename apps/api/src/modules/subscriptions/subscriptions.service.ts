@@ -1,6 +1,26 @@
 import { getSupabaseUser } from '../../integrations/supabase/client.js';
 import { getSupabaseAdmin } from '../../integrations/supabase/client.js';
+import { getEnv } from '../../config/env.js';
 import { createPaymentProvider } from '../payments/payment-provider.js';
+
+function getPaymentProviderConfig() {
+  const env = getEnv();
+  const providerName = env.PAYMENT_PROVIDER ?? 'mock';
+
+  if (providerName === 'paystack') {
+    return {
+      providerName: 'paystack' as const,
+      config: {
+        secretKey: env.PAYSTACK_SECRET_KEY ?? '',
+        publicKey: env.PAYSTACK_PUBLIC_KEY ?? '',
+        webhookSecret: env.PAYSTACK_WEBHOOK_SECRET ?? '',
+        isLive: env.PAYMENTS_LIVE_ENABLED === 'true',
+      },
+    };
+  }
+
+  return { providerName: 'mock' as const };
+}
 
 /**
  * Get the current subscription for a user.
@@ -68,13 +88,14 @@ export async function createSubscription(
   let providerCustomerId: string;
   if (customerError || !customer) {
     // Create customer in payment provider
-    const provider = createPaymentProvider('mock');
+    const { providerName, config } = getPaymentProviderConfig();
+    const provider = createPaymentProvider(providerName, config);
     const { customerId } = await provider.createCustomer(`user-${userId}`, { userId });
     providerCustomerId = customerId;
 
     const { error: insertError } = await adminClient
       .from('payment_customers')
-      .insert({ user_id: userId, provider_customer_id: providerCustomerId, provider: 'mock' });
+      .insert({ user_id: userId, provider_customer_id: providerCustomerId, provider: providerName });
 
     if (insertError) throw insertError;
   } else {
@@ -82,11 +103,12 @@ export async function createSubscription(
   }
 
   // Create subscription in payment provider
-  const provider = createPaymentProvider('mock');
+  const { providerName: subProviderName, config: subConfig } = getPaymentProviderConfig();
+  const subProvider = createPaymentProvider(subProviderName, subConfig);
   const { subscriptionId, status, currentPeriodStart, currentPeriodEnd, cancelAtPeriodEnd } =
-    await provider.createSubscription({
+    await subProvider.createSubscription({
       customerId: providerCustomerId,
-      priceId: `price_${planId}`,
+      priceId: plan.price_cents > 0 ? `${plan.price_cents}:USD` : '0:USD',
       billingInterval,
       paymentMethodId,
     });
@@ -143,8 +165,9 @@ export async function cancelSubscription(
   if (subError || !sub) throw new Error('Subscription not found');
 
   // Cancel in payment provider
-  const provider = createPaymentProvider('mock');
-  const { status } = await provider.cancelSubscription(sub.provider_subscription_id, atPeriodEnd);
+  const { providerName: cancelProviderName, config: cancelConfig } = getPaymentProviderConfig();
+  const cancelProvider = createPaymentProvider(cancelProviderName, cancelConfig);
+  const { status } = await cancelProvider.cancelSubscription(sub.provider_subscription_id, atPeriodEnd);
 
   // Update our record
   const { data, error } = await adminClient
@@ -181,8 +204,9 @@ export async function reactivateSubscription(
 
   if (subError || !sub) throw new Error('Subscription not found');
 
-  const provider = createPaymentProvider('mock');
-  const { status } = await provider.reactivateSubscription(sub.provider_subscription_id);
+  const { providerName: reactivateProviderName, config: reactivateConfig } = getPaymentProviderConfig();
+  const reactivateProvider = createPaymentProvider(reactivateProviderName, reactivateConfig);
+  const { status } = await reactivateProvider.reactivateSubscription(sub.provider_subscription_id);
 
   const { data, error } = await adminClient
     .from('subscriptions')

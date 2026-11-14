@@ -1,5 +1,25 @@
 import { getSupabaseAdmin } from '../../integrations/supabase/client.js';
+import { getEnv } from '../../config/env.js';
 import { createPaymentProvider } from './payment-provider.js';
+
+function getPaymentProviderConfig() {
+  const env = getEnv();
+  const providerName = env.PAYMENT_PROVIDER ?? 'mock';
+
+  if (providerName === 'paystack') {
+    return {
+      providerName: 'paystack' as const,
+      config: {
+        secretKey: env.PAYSTACK_SECRET_KEY ?? '',
+        publicKey: env.PAYSTACK_PUBLIC_KEY ?? '',
+        webhookSecret: env.PAYSTACK_WEBHOOK_SECRET ?? '',
+        isLive: env.PAYMENTS_LIVE_ENABLED === 'true',
+      },
+    };
+  }
+
+  return { providerName: 'mock' as const };
+}
 
 /**
  * Create a checkout session for a subscription.
@@ -22,13 +42,14 @@ export async function createCheckoutSession(
 
   let providerCustomerId: string;
   if (customerError || !customer) {
-    const provider = createPaymentProvider('mock');
+    const { providerName, config } = getPaymentProviderConfig();
+    const provider = createPaymentProvider(providerName, config);
     const { customerId } = await provider.createCustomer(`user-${userId}`, { userId });
     providerCustomerId = customerId;
 
     await adminClient
       .from('payment_customers')
-      .insert({ user_id: userId, provider_customer_id: providerCustomerId, provider: 'mock' });
+      .insert({ user_id: userId, provider_customer_id: providerCustomerId, provider: providerName });
   } else {
     providerCustomerId = customer.provider_customer_id;
   }
@@ -43,10 +64,11 @@ export async function createCheckoutSession(
   if (planError || !plan) throw new Error('Plan not found');
 
   // Create checkout session in payment provider
-  const provider = createPaymentProvider('mock');
-  const { checkoutUrl, sessionId } = await provider.createCheckoutSession({
+  const { providerName: checkoutProviderName, config: checkoutConfig } = getPaymentProviderConfig();
+  const checkoutProvider = createPaymentProvider(checkoutProviderName, checkoutConfig);
+  const { checkoutUrl, sessionId } = await checkoutProvider.createCheckoutSession({
     customerId: providerCustomerId,
-    priceId: `price_${planId}`,
+    priceId: plan.price_cents > 0 ? `${plan.price_cents}:USD` : '0:USD',
     successUrl,
     cancelUrl,
     metadata: { userId, planId, billingInterval },
@@ -68,9 +90,12 @@ export async function processWebhookEvent(
   payload: unknown,
   signature: string,
 ) {
-  // Verify webhook signature
-  const paymentProvider = createPaymentProvider('mock');
-  if (!paymentProvider.verifyWebhookSignature(JSON.stringify(payload), signature)) {
+  // Get payment provider config for webhook signature verification
+  const { providerName: webhookProviderName, config: webhookConfig } = getPaymentProviderConfig();
+  const webhookProvider = createPaymentProvider(webhookProviderName, webhookConfig);
+
+  // Verify webhook signature using provider-specific verification
+  if (!webhookProvider.verifyWebhookSignature(JSON.stringify(payload), signature)) {
     throw new Error('Invalid webhook signature');
   }
 

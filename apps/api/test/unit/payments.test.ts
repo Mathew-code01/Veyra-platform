@@ -11,7 +11,9 @@ import {
   processWebhookEvent,
   reconcileSubscriptions,
 } from '../../src/modules/payments/payments.service.js';
-import { MockPaymentProvider, createPaymentProvider } from '../../src/modules/payments/payment-provider.js';
+import { MockPaymentProvider } from '../../src/modules/payments/payment-provider.mock.js';
+import { createPaymentProvider } from '../../src/modules/payments/payment-provider.js';
+import { loadEnv, resetEnv } from '../../src/config/env.js';
 
 // Helper to create a mock Supabase query chain
 function mockQuery(result: { data: any; error: any }, chainLength: number = 3) {
@@ -35,7 +37,9 @@ function mockQueryArray(result: { data: any[]; error: any }) {
 }
 
 beforeEach(() => {
+  resetEnv();
   vi.clearAllMocks();
+  loadEnv();
 });
 
 afterEach(() => {

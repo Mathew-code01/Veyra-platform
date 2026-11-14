@@ -13,6 +13,7 @@ import {
   adminRevokeDevice,
   listAdminAuditEvents,
 } from '../../src/modules/admin/admin.service.js';
+import { loadEnv, resetEnv } from '../../src/config/env.js';
 
 // Mock Supabase admin client
 function mockAdminClient() {
@@ -116,7 +117,9 @@ function mockAdminClient() {
 }
 
 beforeEach(() => {
+  resetEnv();
   vi.clearAllMocks();
+  loadEnv();
 });
 
 afterEach(() => {
