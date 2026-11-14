@@ -495,3 +495,81 @@ export const DownloadAuditListResponseSchema = z.object({
 
 export type DownloadAuditListResponse = z.infer<typeof DownloadAuditListResponseSchema>;
 
+// --- Desktop Release and Updater API ---
+
+export const ReleaseChannelSchema = z.object({
+  id: z.string(),
+  channelId: z.string(),
+  name: z.string(),
+  description: z.string().optional(),
+  isActive: z.boolean(),
+  createdAt: z.string(),
+});
+
+export type ReleaseChannel = z.infer<typeof ReleaseChannelSchema>;
+
+export const ReleaseInfoSchema = z.object({
+  id: z.string(),
+  channelId: z.string(),
+  channelIdText: z.string(),
+  version: z.string(),
+  platform: z.enum(['windows', 'macos', 'linux']),
+  architecture: z.enum(['x64', 'arm64']),
+  minSupportedVersion: z.string().optional(),
+  isMandatory: z.boolean(),
+  rolloutPercentage: z.number().int(),
+  releaseNotes: z.string().optional(),
+  isRollbackCompatible: z.boolean(),
+  createdAt: z.string(),
+});
+
+export type ReleaseInfo = z.infer<typeof ReleaseInfoSchema>;
+
+export const ReleaseAssetSchema = z.object({
+  id: z.string(),
+  assetId: z.string(),
+  assetType: z.enum(['installer', 'checksum', 'signature']),
+  packageUrl: z.string().url(),
+  packageHashSha256: z.string(),
+  packageSizeBytes: z.number().int().optional(),
+  signedMetadata: z.string().optional(),
+  createdAt: z.string(),
+});
+
+export type ReleaseAsset = z.infer<typeof ReleaseAssetSchema>;
+
+export const ReleaseCheckRequestSchema = z.object({
+  platform: z.enum(['windows', 'macos', 'linux']),
+  architecture: z.enum(['x64', 'arm64']),
+  currentVersion: z.string(),
+  channel: z.string().default('stable'),
+});
+
+export type ReleaseCheckRequest = z.infer<typeof ReleaseCheckRequestSchema>;
+
+export const ReleaseCheckResponseSchema = z.object({
+  ok: z.literal(true),
+  requestId: z.string(),
+  updateAvailable: z.boolean(),
+  release: ReleaseInfoSchema.optional(),
+  assets: z.array(ReleaseAssetSchema),
+});
+
+export type ReleaseCheckResponse = z.infer<typeof ReleaseCheckResponseSchema>;
+
+export const ReleaseListResponseSchema = z.object({
+  ok: z.literal(true),
+  requestId: z.string(),
+  releases: z.array(ReleaseInfoSchema),
+});
+
+export type ReleaseListResponse = z.infer<typeof ReleaseListResponseSchema>;
+
+export const ReleaseChannelsResponseSchema = z.object({
+  ok: z.literal(true),
+  requestId: z.string(),
+  channels: z.array(ReleaseChannelSchema),
+});
+
+export type ReleaseChannelsResponse = z.infer<typeof ReleaseChannelsResponseSchema>;
+
