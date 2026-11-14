@@ -10,6 +10,7 @@ import entitlementsPlugin from './modules/entitlements/entitlements.routes.ts';
 import plansPlugin from './modules/plans/plans.routes.ts';
 import subscriptionsPlugin from './modules/subscriptions/subscriptions.routes.ts';
 import paymentsPlugin from './modules/payments/payments.routes.ts';
+import creditsPlugin from './modules/credits/credits.routes.ts';
 import healthPlugin from './routes/health.ts';
 import { getLogger } from './lib/logger.ts';
 import { buildServerConfig } from './config/server.ts';
@@ -69,6 +70,9 @@ export async function buildApp(): Promise<ReturnType<typeof fastify>> {
 
   // Payments routes (checkout, webhooks, reconciliation)
   await app.register(paymentsPlugin, { prefix: '/api/v1/payments' });
+
+  // Credits routes (balance, reserve, settle, release)
+  await app.register(creditsPlugin, { prefix: '/api/v1/credits' });
 
   // 404 handler (setNotFoundHandler avoids method conflicts with CORS)
   app.setNotFoundHandler((request, reply) => {
