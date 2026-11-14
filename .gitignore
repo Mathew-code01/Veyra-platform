@@ -24,7 +24,6 @@ coverage/
 .DS_Store
 Thumbs.db
 supabase/.temp/
-supabase/config.toml
 .dockerignore
 .tsbuildinfo
 *.tsbuildinfo

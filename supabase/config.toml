@@ -1,0 +1,21 @@
+# Local Supabase configuration (Phase 2 foundation)
+#
+# This file configures the local Supabase CLI for development. The Supabase CLI
+# is not yet installed in this environment. Install it when ready to run a local
+# Supabase stack for migration testing. Do not create or apply to a remote
+# Supabase project without explicit user approval.
+
+[api]
+port = 54321
+
+[db]
+port = 54322
+
+[studio]
+port = 54323
+
+[inbucket]
+port = 54324
+
+# Project reference is obtained from the Supabase dashboard after project creation.
+# project_ref = "<project-ref>"
