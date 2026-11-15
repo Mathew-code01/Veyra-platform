@@ -128,19 +128,19 @@ export async function processWebhookEvent(
 
   // Process the event based on type
   switch (eventType) {
-    case 'checkout.session.completed':
-      await handleCheckoutCompleted(adminClient, payload as any);
+    case 'charge.success':
+      await handleChargeSuccess(adminClient, payload as any);
       break;
-    case 'customer.subscription.updated':
+    case 'subscription.update':
       await handleSubscriptionUpdated(adminClient, payload as any);
       break;
-    case 'customer.subscription.deleted':
+    case 'subscription.disable':
       await handleSubscriptionDeleted(adminClient, payload as any);
       break;
     case 'invoice.payment_failed':
       await handlePaymentFailed(adminClient, payload as any);
       break;
-    case 'invoice.payment_succeeded':
+    case 'invoice.payment_success':
       await handlePaymentSucceeded(adminClient, payload as any);
       break;
     default:
@@ -157,16 +157,20 @@ export async function processWebhookEvent(
   return { processed: true, eventId };
 }
 
-async function handleCheckoutCompleted(adminClient: ReturnType<typeof getSupabaseAdmin>, data: any) {
-  // Checkout completed - create or update subscription
-  const subscriptionId = data.subscription;
-  const customerId = data.customer;
+async function handleChargeSuccess(
+  adminClient: ReturnType<typeof getSupabaseAdmin>,
+  data: any,
+) {
+  // Charge succeeded - create or update subscription
+  const dataObj = data.data || data;
+  const subscriptionId = dataObj.subscription?.subscription_code ?? dataObj.reference;
+  const customerCode = dataObj.customer?.customer_code ?? dataObj.customer;
 
   // Find our payment customer
   const { data: customer } = await adminClient
     .from('payment_customers')
     .select('user_id')
-    .eq('provider_customer_id', customerId)
+    .eq('provider_customer_id', customerCode)
     .single();
 
   if (!customer) return;
@@ -186,9 +190,13 @@ async function handleCheckoutCompleted(adminClient: ReturnType<typeof getSupabas
   }
 }
 
-async function handleSubscriptionUpdated(adminClient: ReturnType<typeof getSupabaseAdmin>, data: any) {
-  const subscriptionId = data.id;
-  const status = data.status;
+async function handleSubscriptionUpdated(
+  adminClient: ReturnType<typeof getSupabaseAdmin>,
+  data: any,
+) {
+  const dataObj = data.data || data;
+  const subscriptionId = dataObj.subscription_code;
+  const status = dataObj.status;
 
   await adminClient
     .from('subscriptions')
@@ -196,8 +204,12 @@ async function handleSubscriptionUpdated(adminClient: ReturnType<typeof getSupab
     .eq('provider_subscription_id', subscriptionId);
 }
 
-async function handleSubscriptionDeleted(adminClient: ReturnType<typeof getSupabaseAdmin>, data: any) {
-  const subscriptionId = data.id;
+async function handleSubscriptionDeleted(
+  adminClient: ReturnType<typeof getSupabaseAdmin>,
+  data: any,
+) {
+  const dataObj = data.data || data;
+  const subscriptionId = dataObj.subscription_code;
 
   await adminClient
     .from('subscriptions')
@@ -205,8 +217,12 @@ async function handleSubscriptionDeleted(adminClient: ReturnType<typeof getSupab
     .eq('provider_subscription_id', subscriptionId);
 }
 
-async function handlePaymentFailed(adminClient: ReturnType<typeof getSupabaseAdmin>, data: any) {
-  const subscriptionId = data.subscription;
+async function handlePaymentFailed(
+  adminClient: ReturnType<typeof getSupabaseAdmin>,
+  data: any,
+) {
+  const dataObj = data.data || data;
+  const subscriptionId = dataObj.subscription;
 
   await adminClient
     .from('subscriptions')
@@ -214,8 +230,12 @@ async function handlePaymentFailed(adminClient: ReturnType<typeof getSupabaseAdm
     .eq('provider_subscription_id', subscriptionId);
 }
 
-async function handlePaymentSucceeded(adminClient: ReturnType<typeof getSupabaseAdmin>, data: any) {
-  const subscriptionId = data.subscription;
+async function handlePaymentSucceeded(
+  adminClient: ReturnType<typeof getSupabaseAdmin>,
+  data: any,
+) {
+  const dataObj = data.data || data;
+  const subscriptionId = dataObj.subscription;
 
   await adminClient
     .from('subscriptions')

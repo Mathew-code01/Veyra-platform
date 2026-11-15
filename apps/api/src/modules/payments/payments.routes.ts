@@ -99,7 +99,7 @@ const paymentsPlugin: FastifyPluginAsync = async (fastify) => {
     async (request, reply) => {
       const requestId = request.id ?? 'unknown';
 
-      const signature = request.headers['stripe-signature'] ?? request.headers['webhook-signature'];
+      const signature = request.headers['x-paystack-signature'];
       if (!signature || typeof signature !== 'string') {
         return reply.status(400).send({
           ok: false,

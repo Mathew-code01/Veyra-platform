@@ -159,6 +159,11 @@ export async function exchangeOAuthCode(
   }
 
   const user = data.user;
+  const session = data.session;
+
+  if (!session) {
+    throw new Error('OAuth code exchange succeeded but no session was returned');
+  }
 
   // Determine if this is a new user (created at approximately now)
   const createdAt = new Date(user.created_at);
@@ -166,9 +171,9 @@ export async function exchangeOAuthCode(
   const isNewUser = now.getTime() - createdAt.getTime() < 60000; // within 1 minute
 
   return {
-    accessToken: data.session.access_token,
-    refreshToken: data.session.refresh_token,
-    expiresIn: data.session.expires_in,
+    accessToken: session.access_token,
+    refreshToken: session.refresh_token ?? '',
+    expiresIn: session.expires_in ?? 0,
     user: {
       id: user.id,
       email: user.email ?? '',
