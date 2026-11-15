@@ -45,7 +45,7 @@ Each release includes package assets with:
 
 ## Desktop Update Flow
 
-1. Desktop queries `GET /api/v1/releases/check` with platform, architecture, current version, and channel
+1. Desktop queries `POST /api/v1/releases/check` with platform, architecture, current version, and channel
 2. Platform returns latest compatible release with package URL, hash, and signed metadata
 3. Desktop verifies package hash and signed metadata
 4. Desktop applies update (must not interrupt active interview)
@@ -53,6 +53,32 @@ Each release includes package assets with:
 ## Security
 
 - Release metadata is signed to prevent tampering
-- Package integrity is verified via SHA-256 hash
+- Package integrity verified via SHA-256 hash
 - Desktop must not trust arbitrary version strings or URLs
-- Revoked releases are excluded from update checks
+- Revoked releases excluded from update checks
+- Staged rollout supported via rollout percentage
+
+## SDK
+
+The Veyra Platform SDK provides methods for all release endpoints:
+- `checkForUpdate(body)`
+- `listReleaseChannels()`
+- `listReleases()`
+
+## Object Storage
+
+Installer packages are stored in object storage (Cloudflare R2 or equivalent, S3-compatible). The platform provides authorized download references, not direct public URLs.
+
+Object storage configuration:
+- `STORAGE_PROVIDER` - `mock` or `r2`
+- `R2_ACCOUNT_ID` - Cloudflare R2 account ID
+- `R2_ACCESS_KEY_ID` - R2 access key ID
+- `R2_SECRET_ACCESS_KEY` - R2 secret access key (server-only)
+- `R2_BUCKET` - R2 bucket name
+
+## Code Signing
+
+Windows and macOS code-signing requirements:
+- Windows: Authenticode signature required for installer
+- macOS: Notarization required for macOS installer
+- Unsigned installers do not provide production-grade update authenticity

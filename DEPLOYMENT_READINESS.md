@@ -17,37 +17,32 @@ Veyra Platform is designed to be deployed as a standard Node.js API.
 ## Environment Variables by Deployment Target
 
 ### Render (API Host)
-- NODE_ENV=production
-- PORT=3000 (or PORT environment variable)
-- API_BASE_URL=https://api.veyra.example.com
+- `NODE_ENV=production`
+- `PORT` (provided by Render)
+- `API_BASE_URL=https://api.veyra.example.com`
 - All Supabase variables
 - All Paystack variables
 - All OAuth variables
 - All Email variables
 - All Storage variables
-- UPDATE_SIGNING_KEY
+- `UPDATE_SIGNING_KEY`
 
 ### Supabase Dashboard
 - Project URL and keys
 - OAuth provider configuration (Google, GitHub)
-- Webhook URL for payments
+- Webhook URL: `https://api.veyra-platform.example.com/api/v1/payments/webhook`
 
 ### GitHub Actions Secrets
-- SUPABASE_SERVICE_ROLE_KEY
-- PAYSTACK_SECRET_KEY
-- PAYSTACK_WEBHOOK_SECRET
-- SUPABASE_ACCESS_TOKEN (for CLI)
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `PAYSTACK_SECRET_KEY`
+- `PAYSTACK_WEBHOOK_SECRET`
+- `SUPABASE_ACCESS_TOKEN` (for CLI)
 
 ## Pre-Deployment Checklist
 
 - [ ] Supabase project created and healthy
-- [ ] Database migrations applied (supabase/migrations)
+- [ ] Database migrations applied (`supabase/migrations`)
 - [ ] Environment variables configured
-- * Supabase URL, anon key, service role key
-- * Paystack secret key, public key, webhook secret
-- * OAuth client IDs and secrets
-- * Email provider credentials
-- * Object storage credentials
 - [ ] `.env` file created (not committed)
 - [ ] `.env.example` committed with placeholders only
 - [ ] No secrets in source code
@@ -55,7 +50,7 @@ Veyra Platform is designed to be deployed as a standard Node.js API.
 ## Deployment Steps
 
 1. Create Supabase project
-2. Apply database migrations (supabase/migrations)
+2. Apply database migrations (`supabase/migrations`)
 3. Configure environment variables on API host
 4. Deploy API to Render (or equivalent)
 5. Configure website on Vercel (or equivalent)
@@ -80,3 +75,20 @@ Veyra Platform is designed to be deployed as a standard Node.js API.
 - Release assets include signed metadata for verification
 - Releases can be revoked via admin API
 - Previous release versions remain accessible
+
+## Production Readiness Checklist
+
+- [ ] TypeScript typecheck passes
+- [ ] All unit tests pass
+- [ ] Database migrations applied
+- [ ] RLS policies enabled
+- [ ] Environment variables configured
+- [ ] `.env` not committed
+- [ ] `.env.example` has placeholders only
+- [ ] No secrets in source code
+
+## Notes
+
+- Do not deploy or change production infrastructure without approval
+- Do not enable live payments without explicit approval
+- Rate limiting is in-memory (suitable for single-instance; use Redis for multi-instance)

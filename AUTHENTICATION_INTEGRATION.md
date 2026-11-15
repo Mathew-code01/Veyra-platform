@@ -2,7 +2,7 @@
 
 ## Overview
 
-Veyra Platform uses Supabase Auth as the central identity provider. Authentication supports both email/password and OAuth (Google, GitHub) sign-in methods.
+Veyra Platform uses Supabase Auth as the central identity provider. Authentication supports both email/password and OAuth (Google, GitHub) sign-in methods. The platform is the sole authority for user identity—both Veyra Website and Veyra Desktop must authenticate through the platform API.
 
 ## Authentication Flow
 
@@ -18,7 +18,7 @@ Veyra Platform uses Supabase Auth as the central identity provider. Authenticati
 
 ### OAuth (Google / GitHub)
 1. Client calls `POST /api/v1/auth/oauth/authorize` with provider name
-2. Platform returns authorization URL with CSRF state
+2. Platform returns authorization URL with CSRF state and PKCE challenge
 3. Client redirects user to provider (browser-based sign-in)
 4. Provider redirects back to Supabase callback URL
 5. Supabase exchanges code for session and creates/links user
@@ -32,6 +32,8 @@ Users can link multiple OAuth providers to a single account:
 2. User calls `POST /api/v1/auth/oauth/link` with OAuth code
 3. Platform exchanges code and verifies the resulting user matches the authenticated user
 4. OAuth identity is linked to the existing account
+
+Identity is derived from verified Supabase JWT claims. Accounts are never merged based on email string matching alone.
 
 ### Session Management
 - Access tokens are short-lived (configurable via Supabase)
@@ -55,16 +57,22 @@ Users can link multiple OAuth providers to a single account:
 | `/api/v1/auth/oauth/callback` | POST | Exchange code for session | No |
 | `/api/v1/auth/oauth/link` | POST | Link OAuth account | Yes |
 
-## Security
+## Desktop Integration
 
-- All passwords are handled by Supabase Auth (never stored by Veyra)
-- OAuth uses PKCE and state parameter for CSRF protection
-- Service-role key is never exposed to clients
-- JWT tokens are used for session management
+For Veyra Desktop (Electron), use a browser-based OAuth flow:
+1. Desktop opens browser to platform authorization URL
+2. User authenticates in browser (Supabase Auth)
+3. Supabase redirects back with authorization code
+4. Desktop extracts code from redirect URL
+5. Desktop calls `POST /api/v1/auth/oauth/callback` with code
+6. Platform returns access token and refresh token
+7. Desktop stores tokens in OS-backed secure storage (Windows Credential Manager, macOS Keychain, Linux Secret Service)
+
+Never store credentials in localStorage or plain-text configuration.
 
 ## SDK
 
-The Veyra Platform SDK (`@veyra/sdk`) provides TypeScript methods for all authentication operations:
+The Veyra Platform SDK provides TypeScript methods for all authentication operations:
 - `register(email, password)`
 - `login(email, password)`
 - `logout()`

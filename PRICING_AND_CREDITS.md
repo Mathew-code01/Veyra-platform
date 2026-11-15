@@ -24,7 +24,7 @@ When calculating costs, the platform finds the most specific matching pricing ru
 1. Match by model + provider + modality + region
 2. Match by model + provider + modality
 3. Match by model only
-4. No match → zero cost
+4. No match → fail closed (zero cost is never assumed)
 
 ### Cost Calculation
 
@@ -35,6 +35,8 @@ output_cost = (output_units × output_price_per_unit_cents) / 1000
 total_cost = input_cost + output_cost
 ```
 
+All monetary calculations use integer arithmetic. Floating-point is never used for money.
+
 ## Credit System
 
 ### Credit Types
@@ -43,7 +45,9 @@ Veyra Platform distinguishes between two types of credits:
 
 1. **Plan Allowance Credits**: Monthly credits granted with an active subscription. These expire at the end of the billing cycle if unused.
 
-2. **Top-up Credits**: Separately purchased credits. These do not expire unless an explicit expiration policy is configured.
+2. **Promotional Credits**: Credits granted for promotions. Expiration policy is configurable.
+
+3. **Top-up Credits**: Separately purchased credits. Expiration policy is explicit and configurable (may differ from monthly allowances).
 
 ### Credit Ledger
 
@@ -62,14 +66,14 @@ All credit movements are recorded in an immutable ledger:
 At the start of each billing cycle:
 1. Platform identifies all active subscriptions
 2. For each subscription with a credit allowance, credits are granted
-3. Allocations are idempotent (duplicate requests are detected)
-4. Allocations are recorded in the credit ledger
+3. Allocations are idempotent (duplicate requests detected via idempotency key)
+4. Allocations recorded in credit ledger
 
 ### Credit Expiration
 
 At the end of each billing cycle:
 1. Unused monthly allowances expire
-2. Expiration is recorded in the credit ledger
+2. Expiration recorded in credit ledger
 3. Expired allowances cannot be spent
 
 ### API Endpoints
@@ -88,3 +92,13 @@ The Veyra Platform SDK provides:
 - `reserveCredits(body)`
 - `settleReservation(reservationId)`
 - `releaseReservation(reservationId)`
+
+## Concurrency Safety
+
+All credit operations use database transactions with row-level locking:
+- Reserve credits: Lock account row, check balance, deduct, record reservation
+- Settle reservation: Mark reservation as settled, record usage
+- Release reservation: Mark reservation as released, add credits back to balance
+- Idempotency keys prevent duplicate operations
+
+Prevents double spending and duplicate settlement even under concurrent requests.

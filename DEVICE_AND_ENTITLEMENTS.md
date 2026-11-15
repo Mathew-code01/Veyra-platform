@@ -9,13 +9,13 @@ Devices are registered with a unique installation ID and receive a server-issued
 Devices are not authorized by default. Authorization must be granted server-side by an administrator or through an automated process. The `is_authorized` field cannot be modified by clients.
 
 ### Device Limits
-Each plan has a configurable device limit. The platform enforces this limit during device registration.
+Each plan has a configurable device limit. The platform enforces this limit transactionally during device registration.
 
 ### Device Revocation
-Devices can be revoked by administrators or users. Revoked devices lose all access immediately.
+Devices can be revoked by administrators or users. Revoked devices lose all access immediately. Revocation is auditable.
 
 ### Device Sessions
-Device sessions are tracked with expiration times and can be revoked individually.
+Device sessions are tracked with expiration times and can be revoked individually. Token hashes are stored (never plaintext).
 
 ## Entitlements
 
@@ -44,9 +44,10 @@ Entitlements are evaluated based on:
 ### Offline Entitlement Snapshots
 
 Signed, expiring entitlement snapshots are available for limited offline use. Snapshots:
-- Expire after a configurable TTL (default 1 hour)
-- Are revoked when the device is revoked
+- Expire after configurable TTL (default 1 hour)
+- Are revoked when device is revoked
 - Are not a substitute for live entitlement checks
+- Are signed with platform signing key
 
 ## API Endpoints
 
@@ -66,4 +67,21 @@ Signed, expiring entitlement snapshots are available for limited offline use. Sn
 
 ## SDK
 
-The Veyra Platform SDK provides methods for all device and entitlement operations.
+The Veyra Platform SDK provides methods for all device and entitlement operations:
+- `registerDevice(body)`
+- `listDevices()`
+- `authorizeDevice(deviceId)`
+- `revokeDevice(deviceId)`
+- `updateDeviceLastSeen(deviceId)`
+- `checkEntitlement(capability)`
+- `listEntitlements()`
+- `getEntitlementSnapshot()`
+- `verifyEntitlementSnapshot(snapshot)`
+
+## Security
+
+- Device credentials are server-issued hashes (never derivable from local data)
+- Devices cannot self-authorize
+- Revoked devices cannot regain access using stale credentials
+- Device limits enforced transactionally
+- All device modifications are auditable

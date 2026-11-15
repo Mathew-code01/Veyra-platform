@@ -7,14 +7,16 @@
 - OAuth uses PKCE and state parameter for CSRF protection
 - JWT tokens are used for session management
 - Refresh tokens are used for session renewal
+- Identity derived from verified Supabase JWT (not client-supplied user ID)
 
 ## Authorization Security
 
 - Row Level Security (RLS) enabled on all user-owned tables
-- Identity derived from verified Supabase JWT (not client-supplied)
+- Identity derived from verified Supabase JWT
 - Field-level restrictions enforced in application code
 - Device authorization is server-issued (cannot be self-authorized)
-- Admin access based on verified server-side roles
+- Admin access based on verified server-side roles (not client-supplied)
+- Revoked administrator loses access immediately
 
 ## Secrets Management
 
@@ -22,7 +24,7 @@
 - Payment provider secret keys are server-only
 - OAuth client secrets are server-only
 - Secrets are never logged or exposed in error responses
-- Structured logging with secret redaction
+- Structured logging with secret redaction (tokens, passwords, secrets)
 
 ## API Security
 
@@ -35,7 +37,7 @@
 
 ## Webhook Security
 
-- Payment webhook signatures verified using HMAC SHA-256
+- Payment webhook signatures verified using HMAC SHA-512
 - Constant-time signature comparison
 - Webhook events persisted for idempotency
 - Duplicate event protection
@@ -57,5 +59,25 @@
 ## Known Limitations
 
 - Rate limiting is in-memory (not distributed across multiple API instances)
-- Supabase client caching may not reflect real-time database changes
-- No IP-based rate limiting
+- Rate limiting suitable for single-instance deployment; use Redis for multi-instance
+
+## Security Review Status
+
+| Area | Status |
+|------|--------|
+| Authentication | Implemented |
+| Authorization | Implemented |
+| OAuth state and PKCE | Implemented |
+| Session refresh and revocation | Implemented |
+| Supabase service-role usage | Server-only |
+| RLS | Enabled on all tables |
+| Account linking | Server-verified |
+| Device credentials | Server-issued hashes |
+| Payment verification | HMAC SHA-512 |
+| Webhook signatures | HMAC SHA-512 |
+| Idempotency | Implemented |
+| Credit ledger | Immutable |
+| Concurrency | Database transactions |
+| Rate limits | IP-based (single-instance) |
+| Request validation | Zod schemas |
+| Error reporting | No secrets leaked |
