@@ -5,7 +5,11 @@ import {
   adminLookupUser,
   adminAdjustCredits,
   adminRevokeDevice,
-  listAdminAuditEvents,
+  listAdminAuditEventsPaginated,
+  adminListUsers,
+  adminGetSubscription,
+  adminListPaymentTransactions,
+  adminStats,
 } from './admin.service.js';
 import { authenticateUser } from '../auth/auth.service.js';
 
@@ -310,7 +314,7 @@ const adminPlugin: FastifyPluginAsync = async (fastify) => {
 
       try {
         const adminClient = getSupabaseAdmin();
-        const result = await listAdminAuditEvents(adminClient, user.id, 'auditor');
+        const result = await listAdminAuditEventsPaginated(adminClient, user.id, 'auditor');
 
         if (!result.ok) {
           return reply.status(403).send({
@@ -337,6 +341,293 @@ const adminPlugin: FastifyPluginAsync = async (fastify) => {
           error: {
             code: 'ADMIN_AUDIT_ERROR',
             message: 'An unexpected error occurred while listing audit events.',
+            status: 500,
+          },
+        });
+      }
+    }
+  );
+
+  // --- Admin: List all users ---
+  fastify.get(
+    '/users',
+    async (request, reply) => {
+      const requestId = request.id ?? 'unknown';
+
+      const authHeader = request.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return reply.status(401).send({
+          ok: false,
+          requestId,
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Missing or invalid authorization header.',
+            status: 401,
+          },
+        });
+      }
+
+      const accessToken = authHeader.substring(7);
+      const user = await authenticateUser(accessToken);
+      if (!user) {
+        return reply.status(401).send({
+          ok: false,
+          requestId,
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Invalid or expired session.',
+            status: 401,
+          },
+        });
+      }
+
+      try {
+        const adminClient = getSupabaseAdmin();
+        const page = (request.query as { page?: string }).page ? parseInt(String((request.query as { page?: string }).page), 10) : 1;
+        const pageSize = (request.query as { pageSize?: string }).pageSize ? parseInt(String((request.query as { pageSize?: string }).pageSize), 10) : 50;
+        const result = await adminListUsers(adminClient, user.id, 'admin', page, pageSize);
+
+        if (!result.ok) {
+          return reply.status(403).send({
+            ok: false,
+            requestId,
+            error: {
+              code: result.error,
+              message: 'Admin access required.',
+              status: 403,
+            },
+          });
+        }
+
+        return reply.send({
+          ok: true,
+          requestId,
+          users: result.users,
+          total: result.total,
+          page: result.page,
+          pageSize: result.pageSize,
+        });
+      } catch (err) {
+        request.log.error({ requestId, err }, 'admin user list error');
+        return reply.status(500).send({
+          ok: false,
+          requestId,
+          error: {
+            code: 'ADMIN_USER_LIST_ERROR',
+            message: 'An unexpected error occurred while listing users.',
+            status: 500,
+          },
+        });
+      }
+    }
+  );
+
+  // --- Admin: Get user subscription ---
+  fastify.get(
+    '/users/:userId/subscription',
+    async (request, reply) => {
+      const requestId = request.id ?? 'unknown';
+      const { userId } = request.params as { userId: string };
+
+      const authHeader = request.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return reply.status(401).send({
+          ok: false,
+          requestId,
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Missing or invalid authorization header.',
+            status: 401,
+          },
+        });
+      }
+
+      const accessToken = authHeader.substring(7);
+      const user = await authenticateUser(accessToken);
+      if (!user) {
+        return reply.status(401).send({
+          ok: false,
+          requestId,
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Invalid or expired session.',
+            status: 401,
+          },
+        });
+      }
+
+      try {
+        const adminClient = getSupabaseAdmin();
+        const result = await adminGetSubscription(adminClient, user.id, userId, 'admin');
+
+        if (!result.ok) {
+          return reply.status(403).send({
+            ok: false,
+            requestId,
+            error: {
+              code: result.error,
+              message: 'Admin access required.',
+              status: 403,
+            },
+          });
+        }
+
+        return reply.send({
+          ok: true,
+          requestId,
+          subscription: result.subscription,
+        });
+      } catch (err) {
+        request.log.error({ requestId, err }, 'admin subscription lookup error');
+        return reply.status(500).send({
+          ok: false,
+          requestId,
+          error: {
+            code: 'ADMIN_SUBSCRIPTION_ERROR',
+            message: 'An unexpected error occurred while looking up subscription.',
+            status: 500,
+          },
+        });
+      }
+    }
+  );
+
+  // --- Admin: List payment transactions ---
+  fastify.get(
+    '/payments',
+    async (request, reply) => {
+      const requestId = request.id ?? 'unknown';
+
+      const authHeader = request.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return reply.status(401).send({
+          ok: false,
+          requestId,
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Missing or invalid authorization header.',
+            status: 401,
+          },
+        });
+      }
+
+      const accessToken = authHeader.substring(7);
+      const user = await authenticateUser(accessToken);
+      if (!user) {
+        return reply.status(401).send({
+          ok: false,
+          requestId,
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Invalid or expired session.',
+            status: 401,
+          },
+        });
+      }
+
+      try {
+        const adminClient = getSupabaseAdmin();
+        const page = (request.query as { page?: string }).page ? parseInt(String((request.query as { page?: string }).page), 10) : 1;
+        const pageSize = (request.query as { pageSize?: string }).pageSize ? parseInt(String((request.query as { pageSize?: string }).pageSize), 10) : 50;
+        const result = await adminListPaymentTransactions(adminClient, user.id, 'billing', page, pageSize);
+
+        if (!result.ok) {
+          return reply.status(403).send({
+            ok: false,
+            requestId,
+            error: {
+              code: result.error,
+              message: 'Admin access required.',
+              status: 403,
+            },
+          });
+        }
+
+        return reply.send({
+          ok: true,
+          requestId,
+          transactions: result.transactions,
+          total: result.total,
+          page: result.page,
+          pageSize: result.pageSize,
+        });
+      } catch (err) {
+        request.log.error({ requestId, err }, 'admin payment list error');
+        return reply.status(500).send({
+          ok: false,
+          requestId,
+          error: {
+            code: 'ADMIN_PAYMENT_LIST_ERROR',
+            message: 'An unexpected error occurred while listing payments.',
+            status: 500,
+          },
+        });
+      }
+    }
+  );
+
+  // --- Admin: Platform statistics ---
+  fastify.get(
+    '/stats',
+    async (request, reply) => {
+      const requestId = request.id ?? 'unknown';
+
+      const authHeader = request.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return reply.status(401).send({
+          ok: false,
+          requestId,
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Missing or invalid authorization header.',
+            status: 401,
+          },
+        });
+      }
+
+      const accessToken = authHeader.substring(7);
+      const user = await authenticateUser(accessToken);
+      if (!user) {
+        return reply.status(401).send({
+          ok: false,
+          requestId,
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Invalid or expired session.',
+            status: 401,
+          },
+        });
+      }
+
+      try {
+        const adminClient = getSupabaseAdmin();
+        const result = await adminStats(adminClient, user.id, 'admin');
+
+        if (!result.ok) {
+          return reply.status(403).send({
+            ok: false,
+            requestId,
+            error: {
+              code: result.error,
+              message: 'Admin access required.',
+              status: 403,
+            },
+          });
+        }
+
+        return reply.send({
+          ok: true,
+          requestId,
+          stats: result.stats,
+        });
+      } catch (err) {
+        request.log.error({ requestId, err }, 'admin stats error');
+        return reply.status(500).send({
+          ok: false,
+          requestId,
+          error: {
+            code: 'ADMIN_STATS_ERROR',
+            message: 'An unexpected error occurred while fetching admin stats.',
             status: 500,
           },
         });

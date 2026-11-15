@@ -11,7 +11,7 @@ import {
   adminLookupUser,
   adminAdjustCredits,
   adminRevokeDevice,
-  listAdminAuditEvents,
+  listAdminAuditEventsPaginated,
 } from '../../src/modules/admin/admin.service.js';
 import { loadEnv, resetEnv } from '../../src/config/env.js';
 
@@ -63,6 +63,7 @@ function mockAdminClient() {
   const adminRolesChain: any = {};
   adminRolesChain.select = vi.fn().mockReturnValue(adminRolesChain);
   adminRolesChain.eq = vi.fn().mockReturnValue(adminRolesChain);
+  adminRolesChain.range = vi.fn().mockReturnValue(adminRolesChain);
   adminRolesChain.single = vi.fn().mockResolvedValue({
     data: { id: 'ar-1', expires_at: null },
     error: null,
@@ -71,6 +72,7 @@ function mockAdminClient() {
   const profilesChain: any = {};
   profilesChain.select = vi.fn().mockReturnValue(profilesChain);
   profilesChain.eq = vi.fn().mockReturnValue(profilesChain);
+  profilesChain.range = vi.fn().mockReturnValue(profilesChain);
   profilesChain.single = vi.fn().mockResolvedValue({
     data: {
       id: 'user-1',
@@ -86,6 +88,7 @@ function mockAdminClient() {
   const creditChain: any = {};
   creditChain.select = vi.fn().mockReturnValue(creditChain);
   creditChain.eq = vi.fn().mockReturnValue(creditChain);
+  creditChain.range = vi.fn().mockReturnValue(creditChain);
   creditChain.single = vi.fn().mockResolvedValue({
     data: { id: 'ca-1', balance_cents: 1000 },
     error: null,
@@ -96,6 +99,7 @@ function mockAdminClient() {
   const creditLedgerChain: any = {};
   creditLedgerChain.select = vi.fn().mockReturnValue(creditLedgerChain);
   creditLedgerChain.eq = vi.fn().mockReturnValue(creditLedgerChain);
+  creditLedgerChain.range = vi.fn().mockReturnValue(creditLedgerChain);
   creditLedgerChain.single = vi.fn().mockResolvedValue({
     data: null,
     error: { code: 'PGRST116' },
@@ -105,6 +109,7 @@ function mockAdminClient() {
   const devicesChain: any = {};
   devicesChain.select = vi.fn().mockReturnValue(devicesChain);
   devicesChain.eq = vi.fn().mockReturnValue(devicesChain);
+  devicesChain.range = vi.fn().mockReturnValue(devicesChain);
   devicesChain.single = vi.fn().mockResolvedValue({
     data: {
       id: 'dev-1',
@@ -117,8 +122,10 @@ function mockAdminClient() {
   devicesChain.update = vi.fn().mockReturnValue(devicesChain);
 
   const auditChain: any = {};
-  auditChain.insert = vi.fn().mockResolvedValue({ error: null });
   auditChain.select = vi.fn().mockReturnValue(auditChain);
+  auditChain.eq = vi.fn().mockReturnValue(auditChain);
+  auditChain.range = vi.fn().mockReturnValue(auditChain);
+  auditChain.insert = vi.fn().mockResolvedValue({ error: null });
   auditChain.order = vi.fn().mockReturnValue(auditChain);
   auditChain.limit = vi.fn().mockResolvedValue({ data: [], error: null });
 
@@ -271,7 +278,7 @@ describe('adminRevokeDevice', () => {
 describe('listAdminAuditEvents', () => {
   it('returns audit events', async () => {
     const adminClient = mockAdminClient();
-    const result = await listAdminAuditEvents(adminClient as any, 'admin-1', 'auditor');
+    const result = await listAdminAuditEventsPaginated(adminClient as any, 'admin-1', 'auditor');
     expect(result.ok).toBe(true);
     expect(result.auditEvents).toEqual([]);
   });
