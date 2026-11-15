@@ -2,7 +2,7 @@ import { getSupabaseAdmin } from '../../integrations/supabase/client.js';
 import { getEnv } from '../../config/env.js';
 import { createPaymentProvider } from './payment-provider.js';
 
-function getPaymentProviderConfig() {
+export function getPaymentProviderConfig() {
   const env = getEnv();
   const providerName = env.PAYMENT_PROVIDER ?? 'mock';
 

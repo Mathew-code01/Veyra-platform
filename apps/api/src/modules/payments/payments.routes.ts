@@ -4,7 +4,13 @@ import {
   CheckoutSessionRequestSchema,
 } from '../../../../../packages/contracts/src/index.ts';
 import { getSupabaseAdmin } from '../../integrations/supabase/client.js';
-import { createCheckoutSession, processWebhookEvent, reconcileSubscriptions } from './payments.service.js';
+import {
+  createCheckoutSession,
+  processWebhookEvent,
+  reconcileSubscriptions,
+  getPaymentProviderConfig,
+} from './payments.service.js';
+import { createPaymentProvider } from './payment-provider.js';
 import { authenticateUser } from '../auth/auth.service.js';
 
 const paymentsPlugin: FastifyPluginAsync = async (fastify) => {
@@ -132,11 +138,25 @@ const paymentsPlugin: FastifyPluginAsync = async (fastify) => {
         });
       }
 
+      const { providerName: webhookProviderName, config: webhookConfig } = getPaymentProviderConfig();
+      const webhookProvider = createPaymentProvider(webhookProviderName, webhookConfig);
+      if (!webhookProvider.verifyWebhookSignature(JSON.stringify(request.body), signature)) {
+        return reply.status(400).send({
+          ok: false,
+          requestId,
+          error: {
+            code: 'INVALID_WEBHOOK',
+            message: 'Invalid webhook signature.',
+            status: 400,
+          },
+        });
+      }
+
       try {
         const adminClient = getSupabaseAdmin();
         const result = await processWebhookEvent(
           adminClient,
-          'mock',
+          webhookProviderName,
           eventId,
           eventType,
           request.body,
