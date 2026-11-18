@@ -30,7 +30,9 @@ export class MockPaymentProvider {
 
   async createCheckoutSession(_params: {
     customerId: string;
+    customerEmail?: string;
     priceId: string;
+    subscriptionPlanCode?: string;
     successUrl: string;
     cancelUrl: string;
     metadata?: Record<string, string>;

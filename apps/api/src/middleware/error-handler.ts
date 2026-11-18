@@ -6,25 +6,31 @@ interface ErrorHandlerOptions {
   isProduction?: boolean;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
 const errorHandlerPlugin: FastifyPluginAsync<ErrorHandlerOptions> = async (fastify, opts) => {
   const isProduction = opts.isProduction ?? false;
 
   fastify.setErrorHandler((error, request, reply) => {
     const requestId = request.id ?? 'unknown';
     const log = request.log.child({ requestId, err: error });
+    const errorFields = isRecord(error) ? error : {};
 
     let statusCode = 500;
-    if (error.statusCode) {
-      statusCode = error.statusCode;
+    if (typeof errorFields.statusCode === 'number') {
+      statusCode = errorFields.statusCode;
     }
 
     let code = 'INTERNAL_SERVER_ERROR';
     let message = 'An unexpected error occurred.';
 
-    if (error.code) code = error.code;
-    if (error.message) message = error.message;
+    if (typeof errorFields.code === 'string') code = errorFields.code;
+    if (error instanceof Error) message = error.message;
+    else if (typeof errorFields.message === 'string') message = errorFields.message;
 
-    if (error.validation) {
+    if (errorFields.validation) {
       code = 'VALIDATION_ERROR';
       statusCode = 400;
       message = 'Request validation failed.';
@@ -32,7 +38,10 @@ const errorHandlerPlugin: FastifyPluginAsync<ErrorHandlerOptions> = async (fasti
 
     const details: Record<string, unknown> | undefined = isProduction
       ? undefined
-      : { stack: error.stack, type: error.constructor.name };
+      : {
+          ...(error instanceof Error ? { stack: error.stack } : {}),
+          type: error instanceof Error ? error.constructor.name : typeof error,
+        };
 
     const response = {
       ok: false,

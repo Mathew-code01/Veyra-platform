@@ -137,9 +137,9 @@ describe('seedDevPlans', () => {
 });
 
 describe('listPlans', () => {
-  it('returns active plans', async () => {
+  it('lists only published cloud plan offers', async () => {
     const plans = [
-      { id: 'plan-1', name: 'Local', family: 'local', description: null, billing_interval: 'monthly', price_cents: 0, currency: 'USD', features: {}, device_limit: 1, is_active: true, is_dev_fixture: true, created_at: '2026-01-01T00:00:00Z' },
+      { id: 'plan-1', name: 'Cloud', family: 'cloud', description: null, billing_interval: 'monthly', price_cents: 0, currency: 'USD', features: {}, device_limit: 1, is_active: true, is_published: true, is_dev_fixture: false, created_at: '2026-01-01T00:00:00Z' },
     ];
     const mockUserClient = {
       from: vi.fn().mockReturnValue({
@@ -151,13 +151,13 @@ describe('listPlans', () => {
     };
     const result = await listPlans(mockUserClient as any);
     expect(result.plans.length).toBe(1);
-    expect(result.plans[0].name).toBe('Local');
+    expect(result.plans[0].name).toBe('Cloud');
   });
 });
 
 describe('getPlan', () => {
   it('returns a plan by ID', async () => {
-    const plan = { id: 'plan-1', name: 'Local', family: 'local', description: null, billing_interval: 'monthly', price_cents: 0, currency: 'USD', features: {}, device_limit: 1, is_active: true, is_dev_fixture: true, created_at: '2026-01-01T00:00:00Z' };
+    const plan = { id: 'plan-1', name: 'Cloud', family: 'cloud', description: null, billing_interval: 'monthly', price_cents: 0, currency: 'USD', features: {}, device_limit: 1, is_active: true, is_published: true, is_dev_fixture: false, created_at: '2026-01-01T00:00:00Z' };
     const mockUserClient = {
       from: vi.fn().mockReturnValue({
         select: vi.fn().mockReturnThis(),
@@ -167,7 +167,7 @@ describe('getPlan', () => {
     };
     const result = await getPlan(mockUserClient as any, 'plan-1');
     expect(result.plan.id).toBe('plan-1');
-    expect(result.plan.name).toBe('Local');
+    expect(result.plan.name).toBe('Cloud');
   });
 });
 
@@ -217,8 +217,7 @@ describe('createSubscription', () => {
             select: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
             single: vi.fn().mockResolvedValue({ data: null, error: { code: 'PGRST116' } }),
-            insert: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({ data: { id: 'pc-1', provider_customer_id: 'cus_mock_1' }, error: null }),
+            insert: vi.fn().mockResolvedValue({ error: null }),
           };
         }
         if (table === 'subscriptions') {
@@ -230,6 +229,9 @@ describe('createSubscription', () => {
               error: null,
             }),
           };
+        }
+        if (table === 'subscription_checkout_intents') {
+          return { insert: vi.fn().mockResolvedValue({ error: null }) };
         }
         return {};
       }),
@@ -259,7 +261,7 @@ describe('cancelSubscription', () => {
 
 describe('createCheckoutSession', () => {
   it('creates a checkout session', async () => {
-    const plan = { id: 'plan-1', price_cents: 999, currency: 'USD' };
+    const plan = { id: 'plan-1', family: 'cloud', is_active: true, is_dev_fixture: false };
     const mockAdminClient = {
       from: vi.fn().mockImplementation((table: string) => {
         if (table === 'plans') {
@@ -269,20 +271,30 @@ describe('createCheckoutSession', () => {
             single: vi.fn().mockResolvedValue({ data: plan, error: null }),
           };
         }
+        if (table === 'plan_prices') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            gt: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({ data: { price_cents: 1299, currency: 'ZAR', billing_interval: 'monthly', is_active: true }, error: null }),
+          };
+        }
         if (table === 'payment_customers') {
           return {
             select: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
             single: vi.fn().mockResolvedValue({ data: null, error: { code: 'PGRST116' } }),
-            insert: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({ data: { id: 'pc-1', provider_customer_id: 'cus_mock_1' }, error: null }),
+            insert: vi.fn().mockResolvedValue({ error: null }),
           };
+        }
+        if (table === 'subscription_checkout_intents') {
+          return { insert: vi.fn().mockResolvedValue({ error: null }) };
         }
         return {};
       }),
     };
 
-    const result = await createCheckoutSession(mockAdminClient as any, 'user-1', 'plan-1', 'monthly', 'https://example.com/success', 'https://example.com/cancel');
+    const result = await createCheckoutSession(mockAdminClient as any, 'user-1', 'user@example.com', 'plan-1', 'monthly', 'ZAR', 'https://example.com/success', 'https://example.com/cancel');
     expect(result.checkoutUrl).toBeDefined();
     expect(result.sessionId).toBeDefined();
   });

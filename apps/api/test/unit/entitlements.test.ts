@@ -60,6 +60,7 @@ describe('checkEntitlement', () => {
     (mockUserClient.from as any).mockImplementation((table: string) => {
       if (table === 'profiles') return mockProfileQuery('active');
       if (table === 'devices') return mockDevicesQuery([]);
+      if (table === 'subscriptions') return { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), single: vi.fn().mockResolvedValue({ data: null, error: { code: 'PGRST116' } }) };
       return mockProfileQuery('active');
     });
 
@@ -69,30 +70,51 @@ describe('checkEntitlement', () => {
     expect(result.reason).toBe('No authorized device');
   });
 
-  it('returns not entitled for capability not in local plan', async () => {
+  it('returns not entitled for a Cloud-only capability without an active subscription', async () => {
     (mockUserClient.from as any).mockImplementation((table: string) => {
       if (table === 'profiles') return mockProfileQuery('active');
       if (table === 'devices') return mockDevicesQuery([{ is_authorized: true }]);
+      if (table === 'subscriptions') return { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), single: vi.fn().mockResolvedValue({ data: null, error: { code: 'PGRST116' } }) };
       return mockProfileQuery('active');
     });
 
-    // cloudInference is not in local plan
+    // Free accounts can use local inference but do not receive Cloud AI.
     const result = await checkEntitlement(mockUserClient as any, 'user-1', 'cloudInference');
 
     expect(result.entitled).toBe(false);
-    expect(result.reason).toContain('not included in local plan');
+    expect(result.reason).toContain('not included in the current account entitlement');
   });
 
-  it('returns entitled for practice (in local plan) with active account and authorized device', async () => {
+  it('returns entitled for free local practice with active account and authorized device', async () => {
     (mockUserClient.from as any).mockImplementation((table: string) => {
       if (table === 'profiles') return mockProfileQuery('active');
       if (table === 'devices') return mockDevicesQuery([{ is_authorized: true }]);
+      if (table === 'subscriptions') return { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), single: vi.fn().mockResolvedValue({ data: null, error: { code: 'PGRST116' } }) };
       return mockProfileQuery('active');
     });
 
     const result = await checkEntitlement(mockUserClient as any, 'user-1', 'practice');
 
     expect(result.entitled).toBe(true);
+  });
+
+  it('reads Cloud capabilities from the current active Platform subscription', async () => {
+    (mockUserClient.from as any).mockImplementation((table: string) => {
+      if (table === 'profiles') return mockProfileQuery('active');
+      if (table === 'devices') return mockDevicesQuery([{ is_authorized: true }]);
+      if (table === 'subscriptions') return {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({
+          data: { status: 'active', current_period_end: '2099-01-01T00:00:00Z', plans: { features: { cloudInference: true } } },
+          error: null,
+        }),
+      };
+      return mockProfileQuery('active');
+    });
+
+    const result = await checkEntitlement(mockUserClient as any, 'user-1', 'cloudInference');
+    expect(result).toMatchObject({ entitled: true, expiresAt: '2099-01-01T00:00:00Z' });
   });
 });
 
@@ -101,6 +123,7 @@ describe('listEntitlements', () => {
     (mockUserClient.from as any).mockImplementation((table: string) => {
       if (table === 'profiles') return mockProfileQuery('active');
       if (table === 'devices') return mockDevicesQuery([{ is_authorized: true }]);
+      if (table === 'subscriptions') return { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), single: vi.fn().mockResolvedValue({ data: null, error: { code: 'PGRST116' } }) };
       return mockProfileQuery('active');
     });
 

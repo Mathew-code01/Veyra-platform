@@ -36,6 +36,11 @@ export async function isAdmin(
 }
 
 /**
+ * Alias for isAdmin - used by payment routes for authorization checks.
+ */
+export const hasAdminRole = isAdmin;
+
+/**
  * Look up a user (admin operation).
  */
 export async function adminLookupUser(

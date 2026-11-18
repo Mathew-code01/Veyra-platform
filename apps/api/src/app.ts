@@ -11,6 +11,7 @@ import plansPlugin from './modules/plans/plans.routes.ts';
 import subscriptionsPlugin from './modules/subscriptions/subscriptions.routes.ts';
 import paymentsPlugin from './modules/payments/payments.routes.ts';
 import creditsPlugin from './modules/credits/credits.routes.ts';
+import usagePlugin from './modules/usage/usage.routes.ts';
 import aiGatewayPlugin from './modules/ai-gateway/ai-gateway.routes.ts';
 import modulesPlugin from './modules/modules/module-catalogue.routes.ts';
 import downloadsPlugin from './modules/downloads/download-authorization.routes.ts';
@@ -33,6 +34,20 @@ export async function buildApp(): Promise<ReturnType<typeof fastify>> {
   const app = fastify({
     logger: false,
     requestIdHeader: config.requestIdHeader,
+  });
+
+  // Preserve exact JSON bytes for provider signature verification. The default
+  // parser consumes the stream and re-stringifying the parsed object changes
+  // Paystack's HMAC input.
+  app.removeContentTypeParser('application/json');
+  app.addContentTypeParser('application/json', { parseAs: 'string' }, (request, body, done) => {
+    const rawBody = typeof body === 'string' ? body : body.toString('utf8');
+    (request as typeof request & { rawBody?: string }).rawBody = rawBody;
+    try {
+      done(null, JSON.parse(rawBody));
+    } catch (error) {
+      done(error as Error);
+    }
   });
 
   // Security headers
@@ -87,6 +102,9 @@ export async function buildApp(): Promise<ReturnType<typeof fastify>> {
 
   // Credits routes (balance, reserve, settle, release)
   await app.register(creditsPlugin, { prefix: '/api/v1/credits' });
+
+  // Usage routes (customer-facing usage history)
+  await app.register(usagePlugin, { prefix: '/api/v1/usage' });
 
   // Module catalogue routes (modules, versions)
   await app.register(modulesPlugin, { prefix: '/api/v1/modules' });

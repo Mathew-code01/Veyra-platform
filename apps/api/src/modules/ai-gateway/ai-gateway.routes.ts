@@ -152,8 +152,9 @@ const aiGatewayPlugin: FastifyPluginAsync = async (fastify) => {
       }
 
       try {
-        // Return mock model info
-        const models = [
+        // Expose deterministic mock models only to automated test environments.
+        // Application users must not mistake fixtures for working providers.
+        const models = process.env.NODE_ENV === 'test' ? [
           {
             id: 'mock-text-small',
             modelId: 'mock-text-small',
@@ -202,12 +203,14 @@ const aiGatewayPlugin: FastifyPluginAsync = async (fastify) => {
             capabilities: ['vision', 'image_analysis'],
             isAvailable: true,
           },
-        ];
+        ] : [];
 
         return reply.send({
           ok: true,
           requestId,
           models,
+          cloudAIAvailable: false,
+          message: 'Managed Cloud AI is not configured on this Platform environment yet.',
         });
       } catch (err) {
         request.log.error({ requestId, err }, 'AI model list error');

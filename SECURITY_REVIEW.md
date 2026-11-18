@@ -1,5 +1,11 @@
 # Veyra Platform — Security Review
 
+## Current verification update (2026-11-15)
+
+- `POST /api/v1/payments/reconcile` now requires a server-verified `billing` role before it calls the privileged reconciliation service. The route-level regression tests verify non-billing denial and authorized access.
+- The default payment adapter is mock. Its signature check is not a real Paystack HMAC verification; mock payments must not be used in production. Startup rejects the mock payment provider in production.
+- The checklist below is not evidence that production credentials, OAuth providers, database policies, or third-party integrations are configured. Those require environment/deployment verification.
+
 ## Authentication Security
 
 - Supabase Auth is used as the identity provider
@@ -37,10 +43,9 @@
 
 ## Webhook Security
 
-- Payment webhook signatures verified using HMAC SHA-512
-- Constant-time signature comparison
-- Webhook events persisted for idempotency
-- Duplicate event protection
+- Signature verification is provider-specific. The current mock adapter accepts signatures and is not a production verifier.
+- The mock provider must remain disabled in production; a real provider adapter and verified signature implementation are required before live payments.
+- Webhook events are persisted for idempotency, but no live Paystack webhook was exercised.
 
 ## Credit Security
 
@@ -73,8 +78,8 @@
 | RLS | Enabled on all tables |
 | Account linking | Server-verified |
 | Device credentials | Server-issued hashes |
-| Payment verification | HMAC SHA-512 |
-| Webhook signatures | HMAC SHA-512 |
+| Payment verification | Mock adapter only; production verification not established |
+| Webhook signatures | Mock accepts signatures; real provider verification not established |
 | Idempotency | Implemented |
 | Credit ledger | Immutable |
 | Concurrency | Database transactions |

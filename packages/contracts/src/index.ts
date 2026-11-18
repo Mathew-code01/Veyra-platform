@@ -144,6 +144,32 @@ export const OAuthProviderSchema = z.enum(['google', 'github']);
 
 export type OAuthProvider = z.infer<typeof OAuthProviderSchema>;
 
+export const DesktopAuthEnvelopeSchema = z.object({
+  ephemeralPublicKey: z.string().min(40).max(512).regex(/^[A-Za-z0-9_-]+$/),
+  iv: z.string().length(16),
+  tag: z.string().length(22),
+  ciphertext: z.string().min(1).max(16_384),
+}).strict();
+export type DesktopAuthEnvelope = z.infer<typeof DesktopAuthEnvelopeSchema>;
+
+export const DesktopAuthTransactionCreateRequestSchema = z.object({
+  devicePublicKey: z.string().min(40).max(512).regex(/^[A-Za-z0-9_-]+$/),
+  pollSecret: z.string().min(40).max(128).regex(/^[A-Za-z0-9_-]+$/),
+}).strict();
+export const DesktopAuthTransactionCreateResponseSchema = z.object({
+  ok: z.literal(true), requestId: z.string(), transactionId: z.string().uuid(), expiresAt: z.string().datetime(),
+});
+export const DesktopAuthTransactionBrowserResponseSchema = z.object({
+  ok: z.literal(true), requestId: z.string(), devicePublicKey: z.string(), expiresAt: z.string().datetime(),
+});
+export const DesktopAuthTransactionAuthorizeRequestSchema = z.object({ sessionEnvelope: DesktopAuthEnvelopeSchema }).strict();
+export const DesktopAuthTransactionStatusResponseSchema = z.object({
+  ok: z.literal(true), requestId: z.string(), status: z.enum(['pending', 'authorized', 'consumed', 'cancelled', 'expired']),
+});
+export const DesktopAuthTransactionExchangeResponseSchema = z.object({
+  ok: z.literal(true), requestId: z.string(), sessionEnvelope: DesktopAuthEnvelopeSchema,
+});
+
 export const OAuthInitiateRequestSchema = z.object({
   provider: OAuthProviderSchema,
   redirectTo: z.string().url().optional(),
@@ -336,6 +362,8 @@ export const PlanResponseSchema = z.object({
     features: z.record(z.string(), z.boolean()),
     deviceLimit: z.number().int().positive(),
     isActive: z.boolean(),
+    isPublished: z.boolean(),
+    cloudAiMonthlyCostLimitCents: z.number().int().positive().nullable(),
     createdAt: z.string(),
   }),
 });
@@ -404,6 +432,7 @@ export type CancelSubscriptionRequest = z.infer<typeof CancelSubscriptionRequest
 export const CheckoutSessionRequestSchema = z.object({
   planId: z.string().uuid(),
   billingInterval: z.enum(['monthly', 'yearly']),
+  currency: z.string().length(3).transform((value) => value.toUpperCase()),
   successUrl: z.string().url(),
   cancelUrl: z.string().url(),
 });
@@ -433,6 +462,25 @@ export const PaymentTransactionResponseSchema = z.object({
 });
 
 export type PaymentTransactionResponse = z.infer<typeof PaymentTransactionResponseSchema>;
+
+export const PaymentHistoryTransactionSchema = z.object({
+  id: z.string(),
+  subscriptionId: z.string().optional(),
+  amountCents: z.number().int(),
+  currency: z.string().length(3),
+  status: z.enum(['pending', 'succeeded', 'failed', 'refunded', 'disputed']),
+  paymentDate: z.string(),
+});
+
+export type PaymentHistoryTransaction = z.infer<typeof PaymentHistoryTransactionSchema>;
+
+export const PaymentHistoryResponseSchema = z.object({
+  ok: z.literal(true),
+  requestId: z.string(),
+  transactions: z.array(PaymentHistoryTransactionSchema),
+});
+
+export type PaymentHistoryResponse = z.infer<typeof PaymentHistoryResponseSchema>;
 
 // --- Cloud AI Gateway ---
 

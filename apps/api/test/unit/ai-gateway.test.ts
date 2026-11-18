@@ -112,6 +112,24 @@ describe('invokeCloudAI', () => {
     expect(result.error).toBe('Consent is required for cloud AI execution');
   });
 
+  it('fails closed for BYOK modes until a real vault and provider adapter exist', async () => {
+    const adminClient = mockAdminClient();
+    const userClient = mockUserClient();
+
+    const result = await invokeCloudAI(adminClient as any, userClient as any, 'user-1', undefined, {
+      modelId: 'mock-text-small',
+      capability: 'text_generation',
+      input: 'Do not route this through the mock provider',
+      consent: true,
+      executionMode: 'byok_only',
+      byokProvider: 'gemini',
+      byokModelId: 'gemini-2.5-flash',
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain('BYOK execution is not available through Platform');
+  });
+
   it('rejects when model does not support capability', async () => {
     const adminClient = mockAdminClient();
     const userClient = mockUserClient();

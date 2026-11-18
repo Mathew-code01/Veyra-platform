@@ -1,13 +1,11 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import {
-  CreateSubscriptionRequestSchema,
   CancelSubscriptionRequestSchema,
 } from '../../../../../packages/contracts/src/index.ts';
 import { getSupabaseAdmin, getSupabaseUser } from '../../integrations/supabase/client.js';
 import {
   getCurrentSubscription,
-  createSubscription,
   cancelSubscription,
   reactivateSubscription,
 } from './subscriptions.service.js';
@@ -71,26 +69,12 @@ const subscriptionsPlugin: FastifyPluginAsync = async (fastify) => {
     }
   );
 
-  // --- Create subscription ---
+  // Subscription records are created only from verified payment-provider events.
+  // Keep this legacy route explicit so clients cannot activate access by posting a plan ID.
   fastify.post(
     '',
     async (request, reply) => {
       const requestId = request.id ?? 'unknown';
-
-      let body: z.infer<typeof CreateSubscriptionRequestSchema>;
-      try {
-        body = CreateSubscriptionRequestSchema.parse(request.body);
-      } catch {
-        return reply.status(400).send({
-          ok: false,
-          requestId,
-          error: {
-            code: 'VALIDATION_ERROR',
-            message: 'Request validation failed.',
-            status: 400,
-          },
-        });
-      }
 
       const authHeader = request.headers.authorization;
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -119,33 +103,15 @@ const subscriptionsPlugin: FastifyPluginAsync = async (fastify) => {
         });
       }
 
-      try {
-        const adminClient = getSupabaseAdmin();
-        const result = await createSubscription(
-          adminClient,
-          user.id,
-          body.planId,
-          body.billingInterval,
-          body.paymentMethodId,
-        );
-
-        return reply.status(201).send({
-          ok: true,
-          requestId,
-          subscription: result.subscription,
-        });
-      } catch (err) {
-        request.log.error({ requestId, err }, 'subscription create error');
-        return reply.status(500).send({
+      return reply.status(409).send({
           ok: false,
           requestId,
           error: {
-            code: 'SUBSCRIPTION_CREATE_ERROR',
-            message: 'An unexpected error occurred while creating subscription.',
-            status: 500,
+            code: 'CHECKOUT_REQUIRED',
+            message: 'Subscriptions are activated only after the Platform verifies payment. Start checkout instead.',
+            status: 409,
           },
         });
-      }
     }
   );
 
@@ -199,7 +165,7 @@ const subscriptionsPlugin: FastifyPluginAsync = async (fastify) => {
 
       try {
         const adminClient = getSupabaseAdmin();
-        const result = await cancelSubscription(adminClient, body.subscriptionId, body.atPeriodEnd);
+        const result = await cancelSubscription(adminClient, user.id, body.subscriptionId, body.atPeriodEnd);
 
         return reply.send({
           ok: true,
@@ -271,7 +237,7 @@ const subscriptionsPlugin: FastifyPluginAsync = async (fastify) => {
 
       try {
         const adminClient = getSupabaseAdmin();
-        const result = await reactivateSubscription(adminClient, body.subscriptionId);
+        const result = await reactivateSubscription(adminClient, user.id, body.subscriptionId);
 
         return reply.send({
           ok: true,

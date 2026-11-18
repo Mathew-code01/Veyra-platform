@@ -9,8 +9,11 @@ import { getSupabaseAdmin } from '../../integrations/supabase/client.js';
 export async function listPlans(userClient: ReturnType<typeof getSupabaseUser>) {
   const { data, error } = await userClient
     .from('plans')
-    .select('id, name, family, description, billing_interval, price_cents, currency, features, device_limit, is_active, is_dev_fixture, created_at')
+    .select('id, name, family, description, billing_interval, price_cents, currency, features, device_limit, is_active, is_published, is_dev_fixture, cloud_ai_monthly_cost_limit_cents, created_at')
     .eq('is_active', true)
+    .eq('is_published', true)
+    .eq('is_dev_fixture', false)
+    .eq('family', 'cloud')
     .order('price_cents', { ascending: true });
 
   if (error) throw error;
@@ -27,7 +30,9 @@ export async function listPlans(userClient: ReturnType<typeof getSupabaseUser>) 
       features: p.features as Record<string, boolean>,
       deviceLimit: p.device_limit,
       isActive: p.is_active,
+      isPublished: p.is_published,
       isDevFixture: p.is_dev_fixture,
+      cloudAiMonthlyCostLimitCents: p.cloud_ai_monthly_cost_limit_cents ?? null,
       createdAt: p.created_at,
     })),
   };
@@ -39,8 +44,12 @@ export async function listPlans(userClient: ReturnType<typeof getSupabaseUser>) 
 export async function getPlan(userClient: ReturnType<typeof getSupabaseUser>, planId: string) {
   const { data, error } = await userClient
     .from('plans')
-    .select('id, name, family, description, billing_interval, price_cents, currency, features, device_limit, is_active, is_dev_fixture, created_at')
+    .select('id, name, family, description, billing_interval, price_cents, currency, features, device_limit, is_active, is_published, is_dev_fixture, cloud_ai_monthly_cost_limit_cents, created_at')
     .eq('id', planId)
+    .eq('is_active', true)
+    .eq('is_published', true)
+    .eq('is_dev_fixture', false)
+    .eq('family', 'cloud')
     .single();
 
   if (error) throw error;
@@ -57,7 +66,9 @@ export async function getPlan(userClient: ReturnType<typeof getSupabaseUser>, pl
       features: data.features as Record<string, boolean>,
       deviceLimit: data.device_limit,
       isActive: data.is_active,
+      isPublished: data.is_published,
       isDevFixture: data.is_dev_fixture,
+      cloudAiMonthlyCostLimitCents: data.cloud_ai_monthly_cost_limit_cents ?? null,
       createdAt: data.created_at,
     },
   };

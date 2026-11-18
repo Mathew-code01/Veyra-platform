@@ -10,6 +10,8 @@ import {
   AccountLinkRequestSchema,
 } from '../../../../../packages/contracts/src/index.ts';
 import { getSupabaseAdmin, getSupabaseUser } from '../../integrations/supabase/client.js';
+import { getEnv } from '../../config/env.js';
+import { getPasswordRecoveryRedirectOrigin } from './password-recovery-origin.js';
 import { authenticateUser } from './auth.service.js';
 import {
   generateOAuthAuthorizationUrl,
@@ -18,6 +20,7 @@ import {
   isOAuthProviderConfigured,
   getConfiguredOAuthProviders,
 } from './oauth.service.js';
+import desktopAuthPlugin from './desktop-auth.routes.js';
 
 // Local validation helper using Zod
 function validate<T>(schema: z.ZodType<T>, body: unknown): T {
@@ -29,6 +32,7 @@ function validate<T>(schema: z.ZodType<T>, body: unknown): T {
 }
 
 const authPlugin: FastifyPluginAsync = async (fastify) => {
+  await fastify.register(desktopAuthPlugin, { prefix: '/desktop' });
   // --- Register ---
   fastify.post(
     '/register',
@@ -312,11 +316,20 @@ const authPlugin: FastifyPluginAsync = async (fastify) => {
       }
 
       const { email } = body;
+      const redirectOrigin = getPasswordRecoveryRedirectOrigin(
+        request.headers.origin,
+        getEnv().ALLOWED_ORIGINS.split(','),
+      );
+
+      if (!redirectOrigin) {
+        request.log.warn({ requestId }, 'password recovery origin is not allowlisted');
+        return reply.send({ ok: true, requestId });
+      }
 
       try {
         const supabase = getSupabaseAdmin();
         await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${request.headers.origin || ''}/auth/reset-password`,
+          redirectTo: `${redirectOrigin}/reset-password`,
         });
 
         // Always return success to prevent email enumeration

@@ -12,8 +12,53 @@ import {
   adminStats,
 } from './admin.service.js';
 import { authenticateUser } from '../auth/auth.service.js';
+import { hasAdminRole } from '../account/account.service.js';
 
 const adminPlugin: FastifyPluginAsync = async (fastify) => {
+  // Admin: configure the internal monthly managed Cloud AI provider-cost cap.
+  // The value is not a customer credit balance or a public usage promise.
+  fastify.put('/plans/:planId/cloud-cost-limit', async (request, reply) => {
+    const requestId = request.id ?? 'unknown';
+    const params = z.object({ planId: z.string().uuid() }).safeParse(request.params);
+    const body = z.object({ monthlyLimitCents: z.number().int().min(1).max(1_000_000).nullable() }).safeParse(request.body);
+    if (!params.success || !body.success) {
+      return reply.status(400).send({ ok: false, requestId, error: { code: 'VALIDATION_ERROR', message: 'Provide a valid Cloud plan ID and a positive monthly cost limit in USD cents, or null to disable Cloud AI for the plan.', status: 400 } });
+    }
+
+    const authHeader = request.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      return reply.status(401).send({ ok: false, requestId, error: { code: 'UNAUTHORIZED', message: 'Missing or invalid authorization header.', status: 401 } });
+    }
+    const user = await authenticateUser(authHeader.substring(7));
+    if (!user) return reply.status(401).send({ ok: false, requestId, error: { code: 'UNAUTHORIZED', message: 'Invalid or expired session.', status: 401 } });
+
+    const adminClient = getSupabaseAdmin();
+    if (!(await hasAdminRole(adminClient, user.id, 'billing')) && !(await hasAdminRole(adminClient, user.id, 'admin'))) {
+      return reply.status(403).send({ ok: false, requestId, error: { code: 'FORBIDDEN', message: 'Billing administrator access is required.', status: 403 } });
+    }
+
+    const { data: plan, error } = await adminClient.from('plans')
+      .update({ cloud_ai_monthly_cost_limit_cents: body.data.monthlyLimitCents })
+      .eq('id', params.data.planId)
+      .eq('family', 'cloud')
+      .eq('is_dev_fixture', false)
+      .select('id, cloud_ai_monthly_cost_limit_cents')
+      .maybeSingle();
+    if (error || !plan) {
+      request.log.error({ requestId, error }, 'Cloud AI cost limit update failed');
+      return reply.status(error ? 500 : 404).send({ ok: false, requestId, error: { code: error ? 'PLAN_UPDATE_ERROR' : 'PLAN_NOT_FOUND', message: error ? 'Unable to update the Cloud plan cost limit.' : 'Commercial Cloud plan not found.', status: error ? 500 : 404 } });
+    }
+
+    await adminClient.from('admin_audit_events').insert({
+      admin_user_id: user.id,
+      action: 'cloud_ai_cost_limit_updated',
+      target_type: 'plan',
+      target_id: plan.id,
+      metadata: { monthlyLimitCents: plan.cloud_ai_monthly_cost_limit_cents },
+    });
+    return reply.send({ ok: true, requestId, planId: plan.id, monthlyLimitCents: plan.cloud_ai_monthly_cost_limit_cents });
+  });
+
   // --- Admin: User lookup ---
   fastify.get(
     '/users/:userId',

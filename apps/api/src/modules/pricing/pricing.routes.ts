@@ -5,6 +5,7 @@ import {
   getCurrenciesForCountry,
   detectCountry,
   getPlanPricingByCountry,
+  getLastKnownGoodPlanPricing,
 } from './country-pricing.service.js';
 import { authenticateUser } from '../auth/auth.service.js';
 
@@ -76,6 +77,9 @@ const pricingPlugin: FastifyPluginAsync = async (fastify) => {
         return reply.send({
           ok: true,
           requestId,
+          source: 'live',
+          retrievedAt: new Date().toISOString(),
+          checkoutAvailable: true,
           country: result.country,
           currency: result.currency,
           currencySymbol: result.currencySymbol,
@@ -83,6 +87,22 @@ const pricingPlugin: FastifyPluginAsync = async (fastify) => {
           plans: result.plans,
         });
       } catch (err) {
+        const cached = getLastKnownGoodPlanPricing(country.toUpperCase(), currency.toUpperCase());
+        if (cached) {
+          request.log.warn({ requestId, country, currency }, 'serving last-known-good pricing for display; checkout remains disabled');
+          return reply.send({
+            ok: true,
+            requestId,
+            source: 'cache',
+            retrievedAt: cached.retrievedAt,
+            checkoutAvailable: false,
+            country: cached.country,
+            currency: cached.currency,
+            currencySymbol: cached.currencySymbol,
+            currencyExponent: cached.currencyExponent,
+            plans: cached.plans,
+          });
+        }
         request.log.error({ requestId, err }, 'pricing by country error');
         return reply.status(500).send({
           ok: false,

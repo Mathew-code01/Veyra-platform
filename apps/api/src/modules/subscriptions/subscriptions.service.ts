@@ -152,6 +152,7 @@ export async function createSubscription(
  */
 export async function cancelSubscription(
   adminClient: ReturnType<typeof getSupabaseAdmin>,
+  userId: string,
   subscriptionId: string,
   atPeriodEnd: boolean = true,
 ) {
@@ -160,6 +161,7 @@ export async function cancelSubscription(
     .from('subscriptions')
     .select('provider_subscription_id, status')
     .eq('id', subscriptionId)
+    .eq('user_id', userId)
     .single();
 
   if (subError || !sub) throw new Error('Subscription not found');
@@ -174,6 +176,7 @@ export async function cancelSubscription(
     .from('subscriptions')
     .update({ status, cancel_at_period_end: atPeriodEnd, canceled_at: atPeriodEnd ? null : new Date().toISOString() })
     .eq('id', subscriptionId)
+    .eq('user_id', userId)
     .select()
     .single();
 
@@ -194,12 +197,14 @@ export async function cancelSubscription(
  */
 export async function reactivateSubscription(
   adminClient: ReturnType<typeof getSupabaseAdmin>,
+  userId: string,
   subscriptionId: string,
 ) {
   const { data: sub, error: subError } = await adminClient
     .from('subscriptions')
     .select('provider_subscription_id')
     .eq('id', subscriptionId)
+    .eq('user_id', userId)
     .single();
 
   if (subError || !sub) throw new Error('Subscription not found');
@@ -212,6 +217,7 @@ export async function reactivateSubscription(
     .from('subscriptions')
     .update({ status, cancel_at_period_end: false, canceled_at: null })
     .eq('id', subscriptionId)
+    .eq('user_id', userId)
     .select()
     .single();
 

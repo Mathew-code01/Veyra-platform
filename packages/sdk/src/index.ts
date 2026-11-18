@@ -53,15 +53,17 @@ export class VeyraClient {
     method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
     path: string,
     body?: unknown,
+    options: { auth?: boolean; headers?: Record<string, string> } = {},
   ): Promise<T> {
     const url = `${this.baseUrl}${path}`;
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
 
-    if (this.accessToken) {
+    if (options.auth !== false && this.accessToken) {
       headers['Authorization'] = `Bearer ${this.accessToken}`;
     }
+    Object.assign(headers, options.headers);
 
     const res = await fetch(url, {
       method,
@@ -227,6 +229,51 @@ export class VeyraClient {
   }
 
   // ========================================================================
+  // Desktop browser authorization handoff
+  // ========================================================================
+
+  async createDesktopAuthTransaction(body: { devicePublicKey: string; pollSecret: string }) {
+    return this.request<{ ok: true; requestId: string; transactionId: string; expiresAt: string }>(
+      'POST', '/api/v1/auth/desktop/transactions', body, { auth: false },
+    );
+  }
+
+  async getDesktopAuthBrowserRequest(transactionId: string) {
+    return this.request<{ ok: true; requestId: string; devicePublicKey: string; expiresAt: string }>(
+      'GET', `/api/v1/auth/desktop/transactions/${encodeURIComponent(transactionId)}/browser`, undefined, { auth: false },
+    );
+  }
+
+  async authorizeDesktopAuthTransaction(transactionId: string, sessionEnvelope: {
+    ephemeralPublicKey: string; iv: string; tag: string; ciphertext: string;
+  }) {
+    return this.request<{ ok: true; requestId: string; authorized: true }>(
+      'POST', `/api/v1/auth/desktop/transactions/${encodeURIComponent(transactionId)}/authorize`, { sessionEnvelope },
+    );
+  }
+
+  async getDesktopAuthTransactionStatus(transactionId: string, pollSecret: string) {
+    return this.request<{ ok: true; requestId: string; status: 'pending' | 'authorized' | 'consumed' | 'cancelled' | 'expired' }>(
+      'GET', `/api/v1/auth/desktop/transactions/${encodeURIComponent(transactionId)}/status`, undefined,
+      { auth: false, headers: { 'X-Desktop-Auth-Poll-Secret': pollSecret } },
+    );
+  }
+
+  async exchangeDesktopAuthTransaction(transactionId: string, pollSecret: string) {
+    return this.request<{ ok: true; requestId: string; sessionEnvelope: { ephemeralPublicKey: string; iv: string; tag: string; ciphertext: string } }>(
+      'POST', `/api/v1/auth/desktop/transactions/${encodeURIComponent(transactionId)}/exchange`, undefined,
+      { auth: false, headers: { 'X-Desktop-Auth-Poll-Secret': pollSecret } },
+    );
+  }
+
+  async cancelDesktopAuthTransaction(transactionId: string, pollSecret: string) {
+    return this.request<{ ok: true; requestId: string; cancelled: boolean }>(
+      'DELETE', `/api/v1/auth/desktop/transactions/${encodeURIComponent(transactionId)}`, undefined,
+      { auth: false, headers: { 'X-Desktop-Auth-Poll-Secret': pollSecret } },
+    );
+  }
+
+  // ========================================================================
   // Devices
   // ========================================================================
 
@@ -364,7 +411,9 @@ export class VeyraClient {
         features: Record<string, boolean>;
         deviceLimit: number;
         isActive: boolean;
+        isPublished: boolean;
         isDevFixture: boolean;
+        cloudAiMonthlyCostLimitCents: number | null;
         createdAt: string;
       }>;
     }>('GET', '/api/v1/plans');
@@ -385,7 +434,9 @@ export class VeyraClient {
         features: Record<string, boolean>;
         deviceLimit: number;
         isActive: boolean;
+        isPublished: boolean;
         isDevFixture: boolean;
+        cloudAiMonthlyCostLimitCents: number | null;
         createdAt: string;
       };
     }>('GET', `/api/v1/plans/${planId}`);
@@ -437,6 +488,7 @@ export class VeyraClient {
         planId: string;
         planName: string;
         planFamily: string;
+        currency: string;
         amountCents: number;
         billingInterval: 'monthly' | 'yearly';
         isAvailable: boolean;
@@ -537,6 +589,7 @@ export class VeyraClient {
   async createCheckoutSession(body: {
     planId: string;
     billingInterval: 'monthly' | 'yearly';
+    currency: string;
     successUrl: string;
     cancelUrl: string;
   }) {
@@ -546,6 +599,21 @@ export class VeyraClient {
       checkoutUrl: string;
       checkoutSessionId: string;
     }>('POST', '/api/v1/payments/checkout', body);
+  }
+
+  async listPaymentHistory() {
+    return this.request<{
+      ok: boolean;
+      requestId: string;
+      transactions: Array<{
+        id: string;
+        subscriptionId?: string;
+        amountCents: number;
+        currency: string;
+        status: 'pending' | 'succeeded' | 'failed' | 'refunded' | 'disputed';
+        paymentDate: string;
+      }>;
+    }>('GET', '/api/v1/payments/history');
   }
 
   // ========================================================================
@@ -558,6 +626,29 @@ export class VeyraClient {
       requestId: string;
       balance: { balanceCents: number; currency: string };
     }>('GET', '/api/v1/credits/balance');
+  }
+
+  async listUsageHistory() {
+    return this.request<{
+      ok: boolean;
+      requestId: string;
+      usage: Array<{
+        id: string;
+        userId: string;
+        modelId: string;
+        capability: string;
+        executionMode: string;
+        billingOwner: string;
+        tokensInput?: number;
+        tokensOutput?: number;
+        audioSeconds?: number;
+        ttsCharacters?: number;
+        visionImages?: number;
+        costCents: number;
+        creditsUsed: number;
+        createdAt: string;
+      }>;
+    }>('GET', '/api/v1/usage');
   }
 
   async reserveCredits(body: {

@@ -1,5 +1,7 @@
 # Veyra Platform
 
+> **Status correction:** The phase labels below are historical. The repository now contains registered Fastify modules, a contracts package, and a typed SDK, but tests and local builds do not verify production Supabase, OAuth, payment, email, storage, or release configuration. See the current source and the ecosystem baseline audit before treating any capability as production-ready.
+
 Central backend for Veyra Desktop (Electron) and Veyra Website (Next.js). Node.js + TypeScript modular monolith backed by Supabase (PostgreSQL + Auth).
 
 ## Status

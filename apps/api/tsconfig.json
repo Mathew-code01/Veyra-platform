@@ -12,7 +12,9 @@
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
     "outDir": "./dist",
+    "rootDir": "../..",
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true

@@ -1,6 +1,6 @@
 import { getSupabaseUser } from '../../integrations/supabase/client.js';
 import { getSupabaseAdmin } from '../../integrations/supabase/client.js';
-import { sign, verify, type JwtPayload } from 'jsonwebtoken';
+import jwt, { type JwtPayload } from 'jsonwebtoken';
 
 /**
  * Capability identifiers. These are illustrative and configurable;
@@ -20,70 +20,19 @@ export const CAPABILITIES = [
 
 export type Capability = (typeof CAPABILITIES)[number];
 
-/**
- * Development plan catalogue. These are DEVELOPMENT FIXTURES ONLY,
- * not commercially finalized prices or feature access.
- * Phase 5 will replace this with a configurable, versionable plan catalogue.
- */
-const DEV_PLANS: Record<string, { features: Record<Capability, boolean>; deviceLimit: number }> = {
-  local: {
-    features: {
-      liveInterview: false,
-      practice: true,
-      localInference: true,
-      cloudInference: false,
-      vision: false,
-      documentAnalysis: false,
-      cloudBackup: false,
-      advancedModels: false,
-      priorityCloudExecution: false,
-    },
-    deviceLimit: 1,
-  },
-  hybrid: {
-    features: {
-      liveInterview: true,
-      practice: true,
-      localInference: true,
-      cloudInference: true,
-      vision: true,
-      documentAnalysis: true,
-      cloudBackup: true,
-      advancedModels: false,
-      priorityCloudExecution: false,
-    },
-    deviceLimit: 3,
-  },
-  cloud: {
-    features: {
-      liveInterview: true,
-      practice: true,
-      localInference: true,
-      cloudInference: true,
-      vision: true,
-      documentAnalysis: true,
-      cloudBackup: true,
-      advancedModels: true,
-      priorityCloudExecution: true,
-    },
-    deviceLimit: 10,
-  },
-} as const;
-
-/**
- * Get the user's current plan. Phase 5 will replace this with subscription-based lookup.
- * For now, returns 'local' plan for all users (development fixture).
- */
-function getUserPlan(_userId: string): string {
-  return 'local';
-}
-
-/**
- * Get plan features for a given plan name.
- */
-function getPlanFeatures(plan: string): Record<Capability, boolean> {
-  return DEV_PLANS[plan as keyof typeof DEV_PLANS]?.features ?? DEV_PLANS.local.features;
-}
+// Account access to local inference and practice is independent of the Cloud
+// subscription. Cloud entitlements come only from a live Platform subscription.
+const FREE_ACCOUNT_FEATURES: Record<Capability, boolean> = {
+  liveInterview: false,
+  practice: true,
+  localInference: true,
+  cloudInference: false,
+  vision: false,
+  documentAnalysis: false,
+  cloudBackup: false,
+  advancedModels: false,
+  priorityCloudExecution: false,
+};
 
 interface EntitlementResult {
   entitled: boolean;
@@ -124,15 +73,35 @@ export async function checkEntitlement(
     return { entitled: false, reason: 'No authorized device' };
   }
 
-  // Check plan features
-  const plan = getUserPlan(userId);
-  const features = getPlanFeatures(plan);
+  // Resolve entitlements from the authoritative subscription and plan record.
+  const { data: subscription, error: subscriptionError } = await userClient
+    .from('subscriptions')
+    .select('status, current_period_end, plans(features)')
+    .eq('user_id', userId)
+    .single();
 
-  if (!features[capability]) {
-    return { entitled: false, reason: `Capability ${capability} not included in ${plan} plan` };
+  const noSubscription = subscriptionError?.code === 'PGRST116' || (!subscription && !subscriptionError);
+  if (subscriptionError && !noSubscription) {
+    return { entitled: false, reason: 'Unable to verify subscription status' };
   }
 
-  return { entitled: true };
+  let features = FREE_ACCOUNT_FEATURES;
+  let expiresAt: string | undefined;
+  if (!noSubscription && subscription) {
+    const statusAllowsAccess = ['active', 'trialing', 'grace_period'].includes(subscription.status);
+    const periodValid = !subscription.current_period_end || new Date(subscription.current_period_end).getTime() > Date.now();
+    const planRecord = Array.isArray(subscription.plans) ? subscription.plans[0] : subscription.plans;
+    if (statusAllowsAccess && periodValid && planRecord?.features && typeof planRecord.features === 'object') {
+      features = { ...FREE_ACCOUNT_FEATURES, ...(planRecord.features as Partial<Record<Capability, boolean>>) };
+      expiresAt = subscription.current_period_end ?? undefined;
+    }
+  }
+
+  if (!features[capability]) {
+    return { entitled: false, reason: `Capability ${capability} is not included in the current account entitlement` };
+  }
+
+  return { entitled: true, expiresAt };
 }
 
 /**
@@ -176,7 +145,7 @@ export async function generateEntitlementSnapshot(
   };
 
   const signingKey = process.env.ENTITLEMENT_SIGNING_KEY ?? 'dev-signing-key-do-not-use-in-production';
-  const snapshot = sign(payload, signingKey, { algorithm: 'HS256' });
+  const snapshot = jwt.sign(payload, signingKey, { algorithm: 'HS256' });
 
   return { snapshot, expiresAt };
 }
@@ -195,7 +164,7 @@ export function verifyEntitlementSnapshot(snapshot: string): {
 } {
   try {
     const signingKey = process.env.ENTITLEMENT_SIGNING_KEY ?? 'dev-signing-key-do-not-use-in-production';
-    const decoded = verify(snapshot, signingKey) as JwtPayload & {
+    const decoded = jwt.verify(snapshot, signingKey) as JwtPayload & {
       userId: string;
       entitlements: Array<{ capability: string; entitled: boolean }>;
       expiresAt: string;

@@ -1,5 +1,7 @@
 # Veyra Platform — Paystack Integration
 
+> **Implementation status:** This document describes the intended Paystack integration, not the current adapter. Source inspection confirms the configured default is `MockPaymentProvider`; no live Paystack client or HMAC webhook verifier was exercised. The mock signature check is not secure for production. Do not claim or enable live payment processing until the adapter and deployment configuration are implemented and verified.
+
 ## Overview
 
 Veyra Platform uses Paystack as its payment provider. Paystack is a payment gateway that supports payments in multiple African countries (Nigeria, Ghana, South Africa, Kenya) with support for NGN, GHS, ZAR, KES, and USD currencies.

@@ -68,6 +68,13 @@ export function loadEnv(): Env {
     );
   }
 
+  if (result.data.NODE_ENV === 'production' && result.data.PAYMENT_PROVIDER === 'mock') {
+    throw new Error(
+      '[veyra-platform] PAYMENT_PROVIDER=mock is not allowed in production. ' +
+        'Configure a verified payment provider before enabling production subscriptions.',
+    );
+  }
+
   cachedEnv = result.data;
   return cachedEnv;
 }

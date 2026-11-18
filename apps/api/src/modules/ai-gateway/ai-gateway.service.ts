@@ -104,6 +104,26 @@ export async function invokeCloudAI(
     };
   }
 
+  // The Platform currently has no encrypted BYOK vault or real provider
+  // adapter. Never return a successful-looking skipped response, invoke the
+  // mock adapter, or record Veyra-funded usage for a BYOK request.
+  if (executionMode.startsWith('byok')) {
+    return {
+      ok: false,
+      error: 'BYOK execution is not available through Platform yet. Configure and use a supported provider directly in Desktop.',
+    };
+  }
+
+  // The only adapter currently registered in this Platform module is a
+  // deterministic test mock. Never present it as managed Cloud AI in an
+  // application/development runtime.
+  if (process.env.NODE_ENV !== 'test') {
+    return {
+      ok: false,
+      error: 'Managed Cloud AI is not configured on this Platform environment yet.',
+    };
+  }
+
   // 3. Check entitlement for cloudInference capability (only for Veyra-funded modes)
   if (chargesVeyraCredits(executionMode)) {
     const entitlement = await checkEntitlement(userClient, userId, 'cloudInference');

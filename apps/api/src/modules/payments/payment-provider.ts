@@ -119,7 +119,9 @@ export class PaystackProvider {
 
   async createCheckoutSession(params: {
     customerId: string;
+    customerEmail?: string;
     priceId: string;
+    subscriptionPlanCode?: string;
     successUrl: string;
     cancelUrl: string;
     metadata?: Record<string, string>;
@@ -142,6 +144,7 @@ export class PaystackProvider {
       };
     }>('POST', '/transaction/initialize', {
       customer: params.customerId,
+      ...(params.customerEmail ? { email: params.customerEmail } : {}),
       amount,
       currency,
       callback_url: params.successUrl,
@@ -149,6 +152,7 @@ export class PaystackProvider {
         ...params.metadata,
         cancel_url: params.cancelUrl,
       },
+      ...(params.subscriptionPlanCode ? { plan: params.subscriptionPlanCode } : {}),
     });
 
     if (!data.status || !data.data) {
@@ -398,11 +402,21 @@ export function createPaymentProvider(
   getCustomer: (customerId: string) => Promise<{ customerId: string; email: string } | null>;
   createCheckoutSession: (params: {
     customerId: string;
+    customerEmail?: string;
     priceId: string;
+    subscriptionPlanCode?: string;
     successUrl: string;
     cancelUrl: string;
     metadata?: Record<string, string>;
   }) => Promise<{ checkoutUrl: string; sessionId: string }>;
+  verifyTransaction?: (reference: string) => Promise<{
+    status: string;
+    amount: number;
+    currency: string;
+    customerEmail: string;
+    reference: string;
+    paidAt: string | null;
+  }>;
   createSubscription: (params: {
     customerId: string;
     priceId: string;

@@ -5,6 +5,7 @@ beforeEach(() => {
   resetEnv();
   process.env.NODE_ENV = 'development';
   process.env.PORT = '3000';
+  process.env.PAYMENT_PROVIDER = 'mock';
 });
 
 describe('loadEnv', () => {
@@ -41,9 +42,17 @@ describe('loadEnv', () => {
 
   it('isProduction/isDevelopment/isTest reflect NODE_ENV', () => {
     process.env.NODE_ENV = 'production';
+    process.env.PAYMENT_PROVIDER = 'paystack';
     loadEnv();
     expect(isProduction()).toBe(true);
     expect(isDevelopment()).toBe(false);
     expect(isTest()).toBe(false);
+  });
+
+  it('rejects the mock payment provider in production', () => {
+    process.env.NODE_ENV = 'production';
+    process.env.PAYMENT_PROVIDER = 'mock';
+
+    expect(() => loadEnv()).toThrow(/PAYMENT_PROVIDER=mock is not allowed in production/);
   });
 });

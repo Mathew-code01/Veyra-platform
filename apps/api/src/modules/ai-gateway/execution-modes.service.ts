@@ -218,7 +218,26 @@ export async function checkSpendLimits(
 ): Promise<{ allowed: boolean; reason?: string; dailyUsedCents: number; monthlyUsedCents: number }> {
   const now = new Date();
   const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  // Cloud cost budget follows the user's actual subscription billing period,
+  // not the calendar month. No default commercial allowance is granted.
+  const { data: subscription, error: subscriptionError } = await adminClient
+    .from('subscriptions')
+    .select('current_period_start, current_period_end, plans(cloud_ai_monthly_cost_limit_cents)')
+    .eq('user_id', userId)
+    .in('status', ['active', 'trialing', 'grace_period'])
+    .single();
+
+  if (subscriptionError || !subscription) {
+    return { allowed: false, reason: 'An active Cloud subscription is required', dailyUsedCents: 0, monthlyUsedCents: 0 };
+  }
+  const plan = Array.isArray(subscription.plans) ? subscription.plans[0] : subscription.plans;
+  const monthlyLimitCents = plan?.cloud_ai_monthly_cost_limit_cents;
+  const periodStart = new Date(subscription.current_period_start);
+  const periodEnd = new Date(subscription.current_period_end);
+  if (!Number.isInteger(monthlyLimitCents) || monthlyLimitCents <= 0 || !Number.isFinite(periodStart.getTime()) || !Number.isFinite(periodEnd.getTime()) || periodEnd <= now || periodStart > now) {
+    return { allowed: false, reason: 'Cloud usage allowance is unavailable for the current billing period', dailyUsedCents: 0, monthlyUsedCents: 0 };
+  }
 
   // Get daily usage
   const { data: dailyUsage } = await adminClient
@@ -238,26 +257,14 @@ export async function checkSpendLimits(
     .from('ai_usage_log')
     .select('cost_cents')
     .eq('user_id', userId)
-    .gte('created_at', monthStart.toISOString())
+    .gte('created_at', periodStart.toISOString())
+    .lt('created_at', periodEnd.toISOString())
     .eq('status', 'success');
 
   const monthlyUsedCents = (monthlyUsage ?? []).reduce(
     (sum: number, r: { cost_cents?: number }) => sum + (r.cost_cents || 0),
     0,
   );
-
-  // Check against limits (simplified - in production, use spend_limits table)
-  const dailyLimitCents = 10000; // $100/day default
-  const monthlyLimitCents = 100000; // $1000/month default
-
-  if (dailyUsedCents + estimatedCostCents > dailyLimitCents) {
-    return {
-      allowed: false,
-      reason: 'Daily spend limit exceeded',
-      dailyUsedCents,
-      monthlyUsedCents,
-    };
-  }
 
   if (monthlyUsedCents + estimatedCostCents > monthlyLimitCents) {
     return {
