@@ -43,11 +43,9 @@ export class MockExchangeRateProvider implements IExchangeRateProvider {
   };
 
   async fetchLatestRates(baseCurrency: string): Promise<ExchangeRateResponse> {
-    const mockRate = this.mockRates[baseCurrency as keyof typeof this.mockRates] ?? 1;
-    const rates: Record<string, number> = { [baseCurrency]: mockRate };
     return {
       baseCurrency,
-      rates,
+      rates: this.mockRates,
       timestamp: new Date().toISOString(),
       provider: 'mock',
     };

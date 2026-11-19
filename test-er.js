@@ -1,0 +1,1 @@
+const { MockExchangeRateProvider } = require('./apps/api/src/modules/pricing/exchange-rate.service.ts'); const p = new MockExchangeRateProvider(); p.fetchLatestRates('USD').then(r => console.log('Rates:', JSON.stringify(r)));

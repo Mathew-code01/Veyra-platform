@@ -1133,3 +1133,51 @@ export const AdminStatsResponseSchema = z.object({
 
 export type AdminStatsResponse = z.infer<typeof AdminStatsResponseSchema>;
 
+// --- Exchange Rate ---
+// Exchange rate data is used for indicative display conversion only.
+// Checkout prices always come from verified plan pricing in the platform's own currency.
+// Never trust client-supplied exchange rates for checkout authorization.
+
+export const ExchangeRateSchema = z.object({
+  baseCurrency: z.string().length(3),
+  currency: z.string().length(3),
+  rate: z.number().positive(),
+  timestamp: z.string().datetime(),
+  provider: z.string(),
+  isLive: z.boolean(),
+});
+
+export type ExchangeRate = z.infer<typeof ExchangeRateSchema>;
+
+export const ExchangeRateListResponseSchema = z.object({
+  ok: z.literal(true),
+  requestId: z.string(),
+  baseCurrency: z.string().length(3),
+  rates: z.array(ExchangeRateSchema),
+});
+
+export type ExchangeRateListResponse = z.infer<typeof ExchangeRateListResponseSchema>;
+
+export const ConvertCurrencyRequestSchema = z.object({
+  amount: z.number().nonnegative(),
+  fromCurrency: z.string().length(3),
+  toCurrency: z.string().length(3),
+});
+
+export type ConvertCurrencyRequest = z.infer<typeof ConvertCurrencyRequestSchema>;
+
+export const ConvertCurrencyResponseSchema = z.object({
+  ok: z.literal(true),
+  requestId: z.string(),
+  amount: z.number().nonnegative(),
+  fromCurrency: z.string().length(3),
+  toCurrency: z.string().length(3),
+  convertedAmount: z.number().nonnegative(),
+  rate: z.number().positive(),
+  isLive: z.boolean(),
+  rateTimestamp: z.string().datetime(),
+});
+
+export type ConvertCurrencyResponse = z.infer<typeof ConvertCurrencyResponseSchema>;
+
+
